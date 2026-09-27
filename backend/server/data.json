@@ -1,0 +1,19 @@
+{
+  "users": [
+    {
+      "id": "user_admin",
+      "username": "admin",
+      "password": "$2a$10$yPJlrUnfkuhuYjRnC7QS6OWQIDFFJJDHQO9G7VgjH2ymeB3wtqIoO",
+      "name": "System Admin",
+      "role": "admin",
+      "category": "Leadership",
+      "designation": "System Administrator",
+      "team": "Management",
+      "phone": "+91 98765 43210",
+      "createdAt": "2026-08-15T07:39:48.081Z"
+    }
+  ],
+  "attendance": [],
+  "tasks": [],
+  "audit_logs": []
+}
