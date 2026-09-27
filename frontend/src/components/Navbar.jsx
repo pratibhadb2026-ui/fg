@@ -41,25 +41,25 @@ export default function Navbar() {
             <Tablet className="w-5 h-5" />
           </div>
           <div>
-            <div className="flex items-center space-x-2">
-              <h1 className="font-bold text-base md:text-lg text-white tracking-tight">
+              <div className="flex items-center space-x-2">
+              <h1 className="font-bold text-lg text-white tracking-tight">
                 Pratibha <span className="text-cyan-400">Main</span> Portal
               </h1>
-              <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 pulse-emerald">
+              <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 pulse-emerald">
                 <Wifi className="w-3 h-3 mr-1" />
                 Active
               </span>
             </div>
-            <p className="text-[11px] text-slate-400 font-medium hidden sm:block">The Official Cinemakers of GLA University.</p>
+            <p className="text-xs text-slate-400 font-medium">The Official Cinemakers of GLA University.</p>
           </div>
         </div>
 
         {/* User Profile & Logout */}
         {user && (
-          <div className="flex items-center space-x-3">
-            <div className="flex items-center space-x-2.5 bg-slate-900 p-1.5 pr-3 rounded-xl border border-slate-800">
-              <div className="w-7 h-7 rounded-lg bg-slate-800 flex items-center justify-center text-cyan-400 border border-slate-700">
-                <RoleIcon className="w-3.5 h-3.5" />
+          <div className="flex items-center space-x-4">
+            <div className="flex items-center space-x-3 bg-slate-900 p-1.5 pr-3 rounded-xl border border-slate-800">
+              <div className="w-8 h-8 rounded-lg bg-slate-800 flex items-center justify-center text-cyan-400 border border-slate-700">
+                <RoleIcon className="w-4 h-4" />
               </div>
               <div className="text-left hidden md:block">
                 <div className="text-xs font-bold text-white leading-tight">{user.name}</div>
@@ -73,9 +73,11 @@ export default function Navbar() {
             <button
               onClick={logout}
               title="Logout"
-              className="p-2 rounded-xl bg-red-500/10 text-red-400 border border-red-500/20 hover:bg-red-500/20 transition-all"
+              aria-label="Logout"
+              className="px-3 py-2 rounded-xl bg-red-500/10 text-red-400 border border-red-500/20 hover:bg-red-500/20 transition-all flex items-center gap-2 font-semibold text-xs shrink-0"
             >
               <LogOut className="w-4 h-4" />
+              <span>Logout</span>
             </button>
           </div>
         )}

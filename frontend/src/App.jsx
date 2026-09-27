@@ -39,7 +39,7 @@ function MainApp() {
   return (
     <div className="min-h-screen flex flex-col">
       <Navbar />
-      <div className="flex-1 max-w-7xl w-full mx-auto p-3 sm:p-4 md:p-8 flex flex-col md:flex-row gap-6">
+      <div className="flex-1 max-w-7xl w-full mx-auto p-4 md:p-8 flex flex-col md:flex-row gap-6">
         <Sidebar activeTab={currentTab} setActiveTab={setActiveTab} role={user.role} />
         
         <main className="flex-1 overflow-x-auto">
@@ -51,14 +51,17 @@ function MainApp() {
             <AdminDashboard activeTab={currentTab} />
           )}
 
+          {/* President Views */}
           {user.role === 'president' && (
             <SeniorDashboard activeTab={currentTab} />
           )}
 
+          {/* Category A Senior Views */}
           {user.role === 'cat_a' && (
             <SeniorDashboard activeTab={currentTab} />
           )}
 
+          {/* Category B Junior Views */}
           {user.role === 'cat_b' && (
             <JuniorDashboard activeTab={currentTab} />
           )}

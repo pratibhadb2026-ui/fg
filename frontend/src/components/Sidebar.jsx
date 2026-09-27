@@ -26,7 +26,7 @@ export default function Sidebar({ activeTab, setActiveTab, role }) {
         ];
       case 'president':
         return [
-          { id: 'cat_a_approval', label: 'Core Team Approvals', icon: Award, desc: 'Approve Core Attendance' },
+          { id: 'cat_a_approval', label: 'Core Team President Approvals', icon: Award, desc: 'Approve Core Attendance' },
           { id: 'cat_b_attendance', label: 'Juniors Attendance', icon: CalendarCheck, desc: 'Monitor Junior Attendance' },
           { id: 'tasks_overview', label: 'Tasks Monitor', icon: ClipboardList, desc: 'View Work Progress' },
           { id: 'equipment', label: 'Equipment Tracking', icon: Package, desc: 'Track camera & equipment' },
@@ -45,7 +45,8 @@ export default function Sidebar({ activeTab, setActiveTab, role }) {
           { id: 'my_attendance', label: 'My Attendance', icon: CalendarCheck, desc: 'View Arrival Time Logs' },
           { id: 'my_tasks', label: 'My Tasks & Work Status', icon: CheckSquare, desc: 'Accept & Update Task Progress' },
           { id: 'equipment', label: 'Equipment Tracking', icon: Package, desc: 'See equipment issued' },
-          { id: 'events', label: 'Events & Shoots', icon: CalendarDays, desc: 'See planned shoots' }
+          { id: 'events', label: 'Events & Shoots', icon: CalendarDays, desc: 'See planned shoots' },
+          // Team Workspace removed for juniors (not used)
         ];
       default:
         return [];
@@ -56,7 +57,7 @@ export default function Sidebar({ activeTab, setActiveTab, role }) {
 
   return (
     <aside className="w-full md:w-64 glass-panel p-4 mb-6 md:mb-0 shrink-0">
-      <div className="text-[11px] font-bold text-slate-400 uppercase tracking-wider px-2 mb-3">
+      <div className="text-xs font-bold text-slate-400 uppercase tracking-wider px-2 mb-3">
         Navigation Panel
       </div>
       <nav className="space-y-2">

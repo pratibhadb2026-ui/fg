@@ -16,8 +16,7 @@ import {
   CheckCircle,
   AlertCircle,
   CheckCircle2,
-  XCircle,
-  Key
+  XCircle
 } from 'lucide-react';
 
 export default function AdminDashboard({ activeTab }) {
@@ -47,16 +46,13 @@ export default function AdminDashboard({ activeTab }) {
     ];
   });
   const [showDesignationsModal, setShowDesignationsModal] = useState(false);
+  const [newDesignation, setNewDesignation] = useState('');
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [roleFilter, setRoleFilter] = useState('all');
 
   // Feedback Banner State
   const [feedback, setFeedback] = useState(null);
-
-  // Change Admin Password Modal State
-  const [showPasswordModal, setShowPasswordModal] = useState(false);
-  const [passForm, setPassForm] = useState({ currentPassword: '', newPassword: '' });
 
   // New User Form State
   const [showAddUserModal, setShowAddUserModal] = useState(false);
@@ -168,25 +164,31 @@ export default function AdminDashboard({ activeTab }) {
     }
   };
 
-  const handlePasswordChange = async (e) => {
-    e.preventDefault();
-    if (!passForm.newPassword || passForm.newPassword.length < 4) {
-      showFeedbackMsg('New password must be at least 4 characters long.', 'error');
-      return;
-    }
-    try {
-      await apiRequest('/auth/change-password', 'PUT', passForm);
-      setShowPasswordModal(false);
-      setPassForm({ currentPassword: '', newPassword: '' });
-      showFeedbackMsg('🔑 Password updated successfully!', 'success');
-    } catch (err) {
-      showFeedbackMsg('Password update error: ' + err.message, 'error');
-    }
+  const saveDesignations = (list) => {
+    const cleaned = [...new Set(list.map(d => String(d).trim()).filter(Boolean))];
+    setDesignations(cleaned);
+    try { localStorage.setItem('designations', JSON.stringify(cleaned)); } catch (e) {}
   };
 
-  const saveDesignations = (list) => {
-    setDesignations(list);
-    try { localStorage.setItem('designations', JSON.stringify(list)); } catch (e) {}
+  const handleAddDesignation = () => {
+    const value = newDesignation.trim();
+    if (!value) {
+      showFeedbackMsg('Please enter a designation name.', 'error');
+      return;
+    }
+    if (designations.some(d => d.toLowerCase() === value.toLowerCase())) {
+      showFeedbackMsg('This designation already exists.', 'error');
+      return;
+    }
+    saveDesignations([...designations, value]);
+    setNewDesignation('');
+    showFeedbackMsg(`Designation "${value}" added.`, 'success');
+  };
+
+  const handleDeleteDesignation = (designation) => {
+    if (!window.confirm(`Delete designation "${designation}"?`)) return;
+    saveDesignations(designations.filter(d => d !== designation));
+    showFeedbackMsg(`Designation "${designation}" deleted.`, 'success');
   };
 
   const handleDeleteUser = async (id, name) => {
@@ -284,19 +286,10 @@ export default function AdminDashboard({ activeTab }) {
               </h2>
               <p className="text-xs text-slate-400 mt-1">Add or edit Core Team & Junior accounts</p>
             </div>
-            <div className="flex flex-wrap items-center gap-2">
-              <button
-                onClick={() => setShowPasswordModal(true)}
-                className="px-3.5 py-2 rounded-xl bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 font-bold text-xs border border-amber-500/30 shadow-sm flex items-center space-x-1.5 transition-all"
-                title="Change Admin Password"
-              >
-                <Key className="w-4 h-4" />
-                <span>Change Password</span>
-              </button>
-
+            <div className="flex items-center space-x-2">
               <button
                 onClick={() => setShowAddUserModal(true)}
-                className="px-4 py-2 rounded-xl bg-cyan-500 hover:bg-cyan-400 text-white font-bold text-xs shadow-lg flex items-center space-x-2 transition-all"
+                className="px-4 py-2.5 rounded-xl bg-cyan-500 hover:bg-cyan-400 text-white font-bold text-xs shadow-lg flex items-center space-x-2 transition-all"
               >
                 <UserPlus className="w-4 h-4" />
                 <span>+ Add New User Account</span>
@@ -308,7 +301,7 @@ export default function AdminDashboard({ activeTab }) {
                 title="Manage Designations"
               >
                 <Users className="w-4 h-4" />
-                <span>Designations</span>
+                <span>Manage Designations</span>
               </button>
             </div>
           </div>
@@ -381,14 +374,14 @@ export default function AdminDashboard({ activeTab }) {
                           setEditFormData({ name: u.name, role: u.role, category: u.category, designation: u.designation, team: u.team, phone: u.phone });
                         }}
                         className="p-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-cyan-300 transition-colors"
-                        title="Edit User Account & Password"
+                        title="Edit User"
                       >
                         <Edit className="w-3.5 h-3.5" />
                       </button>
                       <button
                         onClick={() => handleDeleteUser(u.id, u.name)}
                         className="p-1.5 rounded-lg bg-red-500/10 hover:bg-red-500/20 text-red-400 transition-colors"
-                        title="Delete User Account"
+                        title="Delete User"
                       >
                         <Trash2 className="w-3.5 h-3.5" />
                       </button>
@@ -463,6 +456,7 @@ export default function AdminDashboard({ activeTab }) {
       {/* 3. ATTENDANCE MASTER OVERRIDE & MARKING TAB */}
       {activeTab === 'attendance_master' && (
         <div className="space-y-6">
+          {/* Quick Mark Juniors Section */}
           <div className="glass-panel p-6 space-y-4">
             <h2 className="text-lg font-bold text-white flex items-center space-x-2">
               <Clock className="w-5 h-5 text-cyan-400" />
@@ -527,6 +521,7 @@ export default function AdminDashboard({ activeTab }) {
             </div>
           </div>
 
+          {/* Master Override Table */}
           <div className="glass-panel p-6 space-y-6">
             <div className="flex items-center justify-between border-b border-slate-800 pb-4">
               <div>
@@ -684,59 +679,6 @@ export default function AdminDashboard({ activeTab }) {
         </div>
       )}
 
-      {/* MODAL: CHANGE ADMIN PASSWORD */}
-      {showPasswordModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80">
-          <div className="glass-panel max-w-md w-full p-6 rounded-3xl border border-slate-700 shadow-2xl space-y-4">
-            <h3 className="text-lg font-bold text-white flex items-center gap-2">
-              <Key className="w-5 h-5 text-amber-400" />
-              <span>Change Admin Account Password</span>
-            </h3>
-
-            <form onSubmit={handlePasswordChange} className="space-y-4 text-xs">
-              <div>
-                <label className="block text-slate-300 mb-1 font-semibold">Current Admin Password</label>
-                <input
-                  type="password"
-                  value={passForm.currentPassword}
-                  onChange={(e) => setPassForm({ ...passForm, currentPassword: e.target.value })}
-                  className="w-full p-2.5 glass-input text-white"
-                  placeholder="Enter current password"
-                />
-              </div>
-
-              <div>
-                <label className="block text-slate-300 mb-1 font-semibold">New Password *</label>
-                <input
-                  type="password"
-                  required
-                  value={passForm.newPassword}
-                  onChange={(e) => setPassForm({ ...passForm, newPassword: e.target.value })}
-                  className="w-full p-2.5 glass-input text-white"
-                  placeholder="Enter new password (min 4 chars)"
-                />
-              </div>
-
-              <div className="flex justify-end space-x-2 pt-2 border-t border-slate-800">
-                <button
-                  type="button"
-                  onClick={() => setShowPasswordModal(false)}
-                  className="px-4 py-2 rounded-xl bg-slate-800 text-slate-300 font-semibold"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  className="px-5 py-2 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold shadow-lg"
-                >
-                  Update Password
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
-
       {/* MODAL: ADD USER */}
       {showAddUserModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80">
@@ -797,6 +739,8 @@ export default function AdminDashboard({ activeTab }) {
                     <option value="admin">Super Admin</option>
                   </select>
                 </div>
+
+                {/* Team Group removed per request. Team remains in data with default but is not editable here. */}
               </div>
 
               <div>
@@ -863,9 +807,11 @@ export default function AdminDashboard({ activeTab }) {
                     <option value="admin">Super Admin</option>
                   </select>
                 </div>
+
+                {/* Team Group removed from edit form per request; team still stored but not editable here */}
               </div>
 
-              <div>
+                <div>
                 <label className="block text-slate-300 mb-1">Designation</label>
                 <select
                   value={editFormData.designation || ''}
@@ -902,6 +848,215 @@ export default function AdminDashboard({ activeTab }) {
                   className="px-4 py-2 rounded-xl bg-cyan-500 text-white font-semibold"
                 >
                   Save Changes
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL: MANAGE DESIGNATIONS */}
+      {showDesignationsModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80">
+          <div className="glass-panel max-w-lg w-full max-h-[90vh] overflow-y-auto p-6 shadow-2xl border border-slate-700">
+            <div className="flex items-center justify-between mb-4">
+              <div>
+                <h3 className="text-lg font-bold text-white">Manage Designations</h3>
+                <p className="text-xs text-slate-400 mt-1">Add or remove designations used in user accounts.</p>
+              </div>
+              <button onClick={() => setShowDesignationsModal(false)} className="px-3 py-1.5 rounded-lg bg-slate-800 text-slate-300">Close</button>
+            </div>
+
+            <div className="space-y-4 text-xs">
+              <div>
+                <label className="block text-slate-300 mb-1 font-semibold">Add New Designation</label>
+                <div className="flex items-center gap-2">
+                  <input
+                    type="text"
+                    value={newDesignation}
+                    onChange={(e) => setNewDesignation(e.target.value)}
+                    onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); handleAddDesignation(); } }}
+                    placeholder="e.g. Video Editor"
+                    className="flex-1 min-w-0 p-2.5 glass-input text-white"
+                  />
+                  <button onClick={handleAddDesignation} className="px-4 py-2.5 rounded-xl bg-cyan-500 hover:bg-cyan-400 text-white font-bold">Add</button>
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-slate-300 mb-1 font-semibold">Existing Designations ({designations.length})</label>
+                <div className="space-y-2 max-h-80 overflow-y-auto pr-1">
+                  {designations.length === 0 ? (
+                    <div className="p-4 rounded-xl bg-slate-800 text-slate-400 text-center">No designations added.</div>
+                  ) : designations.map((d) => (
+                    <div key={d} className="flex items-center justify-between gap-3 p-3 rounded-xl bg-slate-800 border border-slate-700">
+                      <div className="text-slate-200 text-sm break-words">{d}</div>
+                      <button
+                        onClick={() => handleDeleteDesignation(d)}
+                        className="px-3 py-1.5 rounded-lg bg-red-500/10 hover:bg-red-500/20 text-red-300 border border-red-500/20 text-xs font-semibold shrink-0"
+                      >Delete</button>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              <div className="flex justify-end pt-2 border-t border-slate-800">
+                <button onClick={() => setShowDesignationsModal(false)} className="px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300">Done</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL: EDIT ATTENDANCE */}
+      {editingAtt && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80">
+          <div className="glass-panel max-w-md w-full max-h-[90vh] overflow-y-auto p-6 shadow-2xl border border-slate-700">
+            <h3 className="text-lg font-bold text-white mb-2">Override Attendance Record</h3>
+            <p className="text-xs text-slate-400 mb-4">Member: {editingAtt.userName} | Date: {editingAtt.date}</p>
+            <form onSubmit={handleModifyAttendance} className="space-y-3 text-xs">
+              <div>
+                <label className="block text-slate-300 mb-1">Attendance Status</label>
+                <select
+                  value={attEditForm.status}
+                  onChange={(e) => setAttEditForm({ ...attEditForm, status: e.target.value })}
+                  className="w-full p-2.5 glass-input text-white"
+                >
+                  <option value="Present">Present</option>
+                  <option value="Absent">Absent</option>
+                  <option value="Approved">Approved (Core)</option>
+                  <option value="Pending Confirmation">Pending Confirmation</option>
+                  <option value="Rejected">Rejected</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-slate-300 mb-1">Time Logged</label>
+                <input
+                  type="text"
+                  value={attEditForm.timeLogged}
+                  onChange={(e) => setAttEditForm({ ...attEditForm, timeLogged: e.target.value })}
+                  className="w-full p-2.5 glass-input text-white"
+                  placeholder="e.g. 05:30 PM"
+                />
+              </div>
+
+              <div>
+                <label className="block text-slate-300 mb-1">Admin Note / Remarks</label>
+                <input
+                  type="text"
+                  value={attEditForm.remarks}
+                  onChange={(e) => setAttEditForm({ ...attEditForm, remarks: e.target.value })}
+                  className="w-full p-2.5 glass-input text-white"
+                  placeholder="Reason for modification"
+                />
+              </div>
+
+              <div className="flex justify-end space-x-2 pt-4">
+                <button
+                  type="button"
+                  onClick={() => setEditingAtt(null)}
+                  className="px-4 py-2 rounded-xl bg-slate-800 text-slate-300 font-semibold"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="px-4 py-2 rounded-xl bg-cyan-500 text-white font-semibold"
+                >
+                  Save Override
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL: ASSIGN TASK */}
+      {showAssignModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80">
+          <div className="glass-panel max-w-md w-full max-h-[90vh] overflow-y-auto p-6 shadow-2xl border border-slate-700">
+            <h3 className="text-lg font-bold text-white mb-4">Assign Task to Junior Member</h3>
+            <form onSubmit={handleAssignTask} className="space-y-3 text-xs">
+              <div>
+                <label className="block text-slate-300 mb-1 font-semibold">Task Title *</label>
+                <input
+                  type="text"
+                  required
+                  value={newTask.title}
+                  onChange={(e) => setNewTask({ ...newTask, title: e.target.value })}
+                  className="w-full p-2.5 glass-input text-white"
+                  placeholder="e.g. Design Landing Page Banner"
+                />
+              </div>
+
+              <div>
+                <label className="block text-slate-300 mb-1 font-semibold">Task Instructions / Description</label>
+                <textarea
+                  rows="3"
+                  value={newTask.description}
+                  onChange={(e) => setNewTask({ ...newTask, description: e.target.value })}
+                  className="w-full p-2.5 glass-input text-white"
+                  placeholder="Detailed work requirements..."
+                ></textarea>
+              </div>
+
+              <div>
+                <label className="block text-slate-300 mb-1 font-semibold">Assign to Junior Member *</label>
+                <select
+                  required
+                  value={newTask.assignedTo}
+                  onChange={(e) => setNewTask({ ...newTask, assignedTo: e.target.value })}
+                  className="w-full p-2.5 glass-input text-white font-semibold"
+                >
+                  <option value="">-- Select Junior Member ({juniors.length} Available) --</option>
+                  {juniors.map((jr) => (
+                    <option key={jr.id} value={jr.id}>
+                      {jr.name} ({jr.team} - {jr.designation})
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="grid grid-cols-2 gap-2">
+                <div>
+                  <label className="block text-slate-300 mb-1 font-semibold">Priority Level *</label>
+                  <select
+                    value={newTask.priority}
+                    onChange={(e) => setNewTask({ ...newTask, priority: e.target.value })}
+                    className="w-full p-2.5 glass-input text-white font-semibold"
+                  >
+                    <option value="Low">Low</option>
+                    <option value="Medium">Medium</option>
+                    <option value="High">High</option>
+                    <option value="Urgent">Urgent</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-slate-300 mb-1 font-semibold">Deadline Date *</label>
+                  <input
+                    type="date"
+                    value={newTask.deadline}
+                    onChange={(e) => setNewTask({ ...newTask, deadline: e.target.value })}
+                    className="w-full p-2.5 glass-input text-white font-semibold"
+                  />
+                </div>
+              </div>
+
+              <div className="flex justify-end space-x-2 pt-4 border-t border-slate-800">
+                <button
+                  type="button"
+                  onClick={() => setShowAssignModal(false)}
+                  className="px-4 py-2.5 rounded-xl bg-slate-800 text-slate-300 font-semibold"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="px-5 py-2.5 rounded-xl bg-cyan-500 hover:bg-cyan-400 text-white font-bold shadow-lg"
+                >
+                  Assign Task
                 </button>
               </div>
             </form>

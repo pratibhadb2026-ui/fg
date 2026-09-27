@@ -103,7 +103,7 @@ export default function Login() {
               ) : (
                 <>
                   <span>Sign In to Portal</span>
-                  <ArrowRight className="w-4 h-4 text-white" />
+                  <ArrowRight className="w-4 h-4" />
                 </>
               )}
             </button>
