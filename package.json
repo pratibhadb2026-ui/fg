@@ -1,0 +1,16 @@
+{
+  "name": "tablet-team-portal",
+  "private": true,
+  "version": "1.0.0",
+  "description": "Tablet Team Portal - Full Stack Application",
+  "scripts": {
+    "frontend:install": "cd frontend && npm install",
+    "frontend:dev": "cd frontend && npm run dev",
+    "frontend:build": "cd frontend && npm run build",
+    "backend:install": "cd backend && npm install",
+    "backend:dev": "cd backend && npm run dev",
+    "backend:start": "cd backend && npm start",
+    "install:all": "npm run frontend:install && npm run backend:install",
+    "build": "npm run frontend:build"
+  }
+}
