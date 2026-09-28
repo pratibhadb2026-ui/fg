@@ -9,8 +9,8 @@ const __dirname = path.dirname(__filename);
 const LOCAL_DB_FILE = path.join(__dirname, 'local-data.json');
 const USE_POSTGRES = Boolean(process.env.DATABASE_URL);
 
-const collections = ['users', 'attendance', 'tasks', 'audit_logs', 'equipment', 'events'];
-const cache = { users: [], attendance: [], tasks: [], audit_logs: [], equipment: [], events: [] };
+const collections = ['users', 'attendance', 'tasks', 'audit_logs', 'equipment', 'events', 'working_days'];
+const cache = { users: [], attendance: [], tasks: [], audit_logs: [], equipment: [], events: [], working_days: [] };
 
 let pool = null;
 let writeQueue = Promise.resolve();

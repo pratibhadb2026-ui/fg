@@ -20,6 +20,7 @@ export default function Sidebar({ activeTab, setActiveTab, role }) {
           { id: 'users', label: 'User Management', icon: Users, desc: 'Add/Edit Core & Junior Accounts' },
           { id: 'attendance_profiles', label: 'Attendance Profiles', icon: CalendarCheck, desc: 'Click a name to view full history' },
           { id: 'attendance_master', label: 'Attendance Override', icon: Clock, desc: 'Modify Core & Junior Records' },
+          { id: 'attendance_calendar', label: 'Working Days & Holidays', icon: CalendarDays, desc: 'Set holidays and working days' },
           { id: 'audit_logs', label: 'Login & Audit Logs', icon: ShieldAlert, desc: 'Track Logins & Security Events' },
           { id: 'tasks_overview', label: 'All Tasks Overview', icon: ClipboardList, desc: 'Monitor Organization Work' },
           { id: 'equipment', label: 'Equipment Tracking', icon: Package, desc: 'Track who has camera & gear' },

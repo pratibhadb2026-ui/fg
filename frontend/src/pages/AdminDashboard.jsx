@@ -19,7 +19,8 @@ import {
   CheckCircle2,
   XCircle,
   Upload,
-  Download
+  Download,
+  CalendarDays
 } from 'lucide-react';
 
 export default function AdminDashboard({ activeTab }) {
@@ -62,6 +63,10 @@ export default function AdminDashboard({ activeTab }) {
   const [editingAtt, setEditingAtt] = useState(null);
   const [attEditForm, setAttEditForm] = useState({ status: 'Present', timeLogged: '05:00 PM', remarks: '' });
 
+  const [calendarDate, setCalendarDate] = useState(new Date().toISOString().slice(0, 10));
+  const [calendarInfo, setCalendarInfo] = useState(null);
+  const [calendarReason, setCalendarReason] = useState('');
+
   // Assign Task State
   const [showAssignModal, setShowAssignModal] = useState(false);
   const [newTask, setNewTask] = useState({
@@ -74,7 +79,12 @@ export default function AdminDashboard({ activeTab }) {
 
   useEffect(() => {
     fetchAdminData();
+    if (activeTab === 'attendance_calendar') loadCalendarDate();
   }, [activeTab]);
+
+  useEffect(() => {
+    if (activeTab === 'attendance_calendar') loadCalendarDate(calendarDate);
+  }, [calendarDate]);
 
   const showFeedbackMsg = (msg, type = 'success') => {
     setFeedback({ msg, type });
@@ -290,6 +300,31 @@ export default function AdminDashboard({ activeTab }) {
     }
   };
 
+  const loadCalendarDate = async (date = calendarDate) => {
+    try {
+      const info = await apiRequest(`/attendance/working-days?date=${encodeURIComponent(date)}`);
+      setCalendarInfo(info);
+      setCalendarReason(info?.reason || '');
+    } catch (err) {
+      showFeedbackMsg('Unable to load working-day status: ' + err.message, 'error');
+    }
+  };
+
+  const setCalendarDay = async (isWorkingDay) => {
+    try {
+      const info = await apiRequest('/attendance/working-days', 'POST', {
+        date: calendarDate,
+        isWorkingDay,
+        reason: calendarReason || (isWorkingDay ? 'Working day' : 'Holiday / non-working day')
+      });
+      setCalendarInfo(info);
+      showFeedbackMsg(`${calendarDate} marked as ${isWorkingDay ? 'Working Day' : 'Non-working Day'}.`, 'success');
+      fetchAdminData();
+    } catch (err) {
+      showFeedbackMsg('Unable to update working-day status: ' + err.message, 'error');
+    }
+  };
+
   const filteredUsers = users.filter(u => {
     if (!u) return false;
     const name = String(u.name || '');
@@ -305,6 +340,33 @@ export default function AdminDashboard({ activeTab }) {
   });
 
   if (activeTab === 'attendance_profiles') return <AttendanceProfiles users={users} viewerRole={user?.role} />;
+
+  if (activeTab === 'attendance_calendar') return (
+    <div className="space-y-6">
+      {feedback && <div className={`p-4 rounded-2xl text-sm font-bold border ${feedback.type === 'success' ? 'bg-emerald-600 text-white border-emerald-400' : 'bg-red-600 text-white border-red-400'}`}>{feedback.msg}</div>}
+      <div className="glass-panel p-6 space-y-5">
+        <div>
+          <h2 className="text-xl font-bold text-white flex items-center gap-2"><CalendarDays className="w-5 h-5 text-cyan-400" /> Working Days & Holidays</h2>
+          <p className="text-xs text-slate-400 mt-1">By default Monday-Saturday are working days and Sunday is non-working. Use this screen for holidays or special working days.</p>
+        </div>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <input type="date" value={calendarDate} onChange={e => setCalendarDate(e.target.value)} className="glass-input p-3 text-sm" />
+          <input placeholder="Reason (e.g. College holiday / Special shoot day)" value={calendarReason} onChange={e => setCalendarReason(e.target.value)} className="glass-input p-3 text-sm" />
+        </div>
+        {calendarInfo && <div className={`p-4 rounded-2xl border ${calendarInfo.isWorkingDay ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-300' : 'bg-slate-900 border-slate-700 text-slate-300'}`}>
+          <div className="font-bold">{calendarInfo.date}: {calendarInfo.isWorkingDay ? 'Working Day' : 'Non-working Day'}</div>
+          <div className="text-xs mt-1 opacity-80">{calendarInfo.reason}</div>
+        </div>}
+        <div className="flex flex-wrap gap-3">
+          <button onClick={() => setCalendarDay(true)} className="px-4 py-3 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-sm">Mark Working Day</button>
+          <button onClick={() => setCalendarDay(false)} className="px-4 py-3 rounded-xl bg-slate-700 hover:bg-slate-600 text-white font-bold text-sm">Mark Holiday / Non-working</button>
+        </div>
+        <div className="p-4 rounded-2xl bg-cyan-500/10 border border-cyan-500/20 text-sm text-slate-200">
+          On a working day, Juniors who are not marked Present are automatically recorded as <b>Absent</b>. On a non-working day, no Absent record is created and the date is excluded from attendance calculation.
+        </div>
+      </div>
+    </div>
+  );
 
   return (
     <div className="space-y-6">
@@ -513,6 +575,7 @@ export default function AdminDashboard({ activeTab }) {
               <Clock className="w-5 h-5 text-cyan-400" />
               <span>Mark Junior Attendance Today</span>
             </h2>
+            <p className="text-xs text-slate-400">Only mark <b className="text-emerald-300">Present</b>. On a working day, anyone not marked Present is automatically recorded as Absent. Sundays and Admin-declared holidays are not counted.</p>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
               {juniors.map((jr) => {
                 const attRecord = catBAttendance.find(a => a && (a.userId === jr.id || a.userUsername === jr.username));

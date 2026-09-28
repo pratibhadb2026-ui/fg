@@ -10,10 +10,85 @@ function getCurrentTimeString() {
   return now.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true });
 }
 
+function getIndiaDateString() {
+  return new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Kolkata' }).format(new Date());
+}
+
+function isDefaultWorkingDay(dateString) {
+  const day = new Date(`${dateString}T12:00:00Z`).getUTCDay();
+  return day !== 0; // Sunday is non-working by default; Monday-Saturday are working days.
+}
+
+function getWorkingDay(dateString) {
+  const override = db.findOne('working_days', r => r.date === dateString);
+  if (override) return { isWorkingDay: Boolean(override.isWorkingDay), reason: override.reason || '' };
+  return { isWorkingDay: isDefaultWorkingDay(dateString), reason: isDefaultWorkingDay(dateString) ? 'Default working day' : 'Sunday' };
+}
+
+function ensureTodayJuniorAbsences(dateString) {
+  if (dateString !== getIndiaDateString()) return;
+  const day = getWorkingDay(dateString);
+  if (!day.isWorkingDay) return;
+
+  const juniors = db.find('users', u => u.role === 'cat_b');
+  for (const junior of juniors) {
+    const existing = db.findOne('attendance', r =>
+      (r.userId === junior.id || r.userUsername === junior.username) && r.date === dateString
+    );
+    if (!existing) {
+      db.insert('attendance', {
+        date: dateString,
+        userId: junior.id,
+        userName: junior.name,
+        userUsername: junior.username,
+        role: 'cat_b',
+        category: 'Juniors',
+        team: junior.team,
+        status: 'Absent',
+        markedBy: 'system',
+        markedByName: 'System',
+        timeLogged: 'N/A',
+        remarks: 'Auto-marked Absent because no Present attendance was recorded on this working day.',
+        autoMarked: true,
+        workingDay: true
+      });
+    }
+  }
+}
+
+// Working-day calendar: Admin can override the default Mon-Sat working / Sunday non-working rule.
+router.get('/working-days', authenticateToken, authorizeRoles('admin'), (req, res) => {
+  const date = req.query.date || getIndiaDateString();
+  res.json({ date, ...getWorkingDay(date) });
+});
+
+router.post('/working-days', authenticateToken, authorizeRoles('admin'), (req, res) => {
+  const { date, isWorkingDay, reason } = req.body;
+  if (!date || typeof isWorkingDay !== 'boolean') {
+    return res.status(400).json({ error: 'date and isWorkingDay are required' });
+  }
+
+  const existing = db.findOne('working_days', r => r.date === date);
+  const payload = { date, isWorkingDay, reason: reason || (isWorkingDay ? 'Working day override' : 'Holiday / non-working day'), setBy: req.user.name };
+  if (existing) db.update('working_days', r => r.id === existing.id, payload);
+  else db.insert('working_days', payload);
+
+  // If a date is changed to non-working, remove only system-generated absences for that date.
+  if (!isWorkingDay) {
+    db.remove('attendance', r => r.date === date && r.autoMarked === true);
+  }
+
+  logAudit(req, 'ATTENDANCE_CALENDAR_UPDATED', req.user.username, req.user.role,
+    `${isWorkingDay ? 'Set working day' : 'Set non-working day'} for ${date}: ${payload.reason}`);
+  res.json({ date, ...getWorkingDay(date) });
+});
+
 // Get Attendance Records
 router.get('/', authenticateToken, (req, res) => {
   const { date, userId, role, team } = req.query;
   let records = db.get('attendance');
+
+  if (date) ensureTodayJuniorAbsences(date);
 
   if (date) {
     records = records.filter(r => r.date === date);
@@ -49,7 +124,11 @@ router.post('/mark-cat-b', authenticateToken, authorizeRoles('admin', 'cat_a', '
     return res.status(400).json({ error: 'User ID and status are required' });
   }
 
-  const targetDate = date || new Date().toISOString().split('T')[0];
+  const targetDate = date || getIndiaDateString();
+  const workingDay = getWorkingDay(targetDate);
+  if (!workingDay.isWorkingDay) {
+    return res.status(400).json({ error: `Attendance cannot be marked because ${targetDate} is a non-working day (${workingDay.reason}).` });
+  }
   const targetUser = db.findOne('users', u => u.id === userId || u.username === userId || u.id === 'user_' + userId);
 
   if (!targetUser) {
@@ -66,7 +145,9 @@ router.post('/mark-cat-b', authenticateToken, authorizeRoles('admin', 'cat_a', '
       markedBy: req.user.id,
       markedByName: req.user.name,
       timeLogged: timeLogged,
-      remarks: remarks || existing.remarks
+      remarks: remarks || existing.remarks,
+      workingDay: true,
+      autoMarked: false
     });
     logAudit(req, 'ATTENDANCE_UPDATED', req.user.username, req.user.role, `Updated Junior attendance for ${targetUser.name}: ${status} at ${timeLogged}`);
     return res.json({ message: 'Attendance updated successfully', status, timeLogged });
@@ -84,7 +165,9 @@ router.post('/mark-cat-b', authenticateToken, authorizeRoles('admin', 'cat_a', '
     markedBy: req.user.id,
     markedByName: req.user.name,
     timeLogged: timeLogged,
-    remarks: remarks || 'Session Attendance'
+    remarks: remarks || 'Session Attendance',
+    workingDay: true,
+    autoMarked: false
   });
 
   logAudit(req, 'ATTENDANCE_MARKED', req.user.username, req.user.role, `Marked Junior attendance for ${targetUser.name}: ${status} at ${timeLogged}`);
