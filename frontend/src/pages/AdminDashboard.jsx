@@ -462,7 +462,7 @@ export default function AdminDashboard({ activeTab }) {
               <thead>
                 <tr>
                   <th>Timestamp</th>
-                  <th>User / Role</th>
+                  <th>User</th>
                   <th>Action Event</th>
                   <th>IP Address</th>
                   <th>Event Details</th>
@@ -474,8 +474,16 @@ export default function AdminDashboard({ activeTab }) {
                     <td className="text-slate-400 whitespace-nowrap">
                       {new Date(log.timestamp).toLocaleString()}
                     </td>
-                    <td className="font-bold text-white font-sans">
-                      {log.username} <span className="text-xs text-slate-400 font-mono">({log.role})</span>
+                    <td className="font-sans">
+                      <div className="font-bold text-white">{log.username}</div>
+                      {(() => {
+                        const matchedUser = users.find((u) =>
+                          u && String(u.username || '').toLowerCase() === String(log.username || '').toLowerCase()
+                        );
+                        return matchedUser?.name ? (
+                          <div className="text-xs text-slate-400 mt-0.5">{matchedUser.name}</div>
+                        ) : null;
+                      })()}
                     </td>
                     <td>
                       <span className={`px-2 py-0.5 rounded text-[11px] font-bold ${
