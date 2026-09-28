@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { apiRequest } from '../utils/api.js';
+import AttendanceProfiles from '../components/AttendanceProfiles.jsx';
 import { useAuth } from '../context/AuthContext.jsx';
 import { 
   Users, 
@@ -302,6 +303,8 @@ export default function AdminDashboard({ activeTab }) {
     const matchesRole = roleFilter === 'all' || u.role === roleFilter;
     return matchesSearch && matchesRole;
   });
+
+  if (activeTab === 'attendance_profiles') return <AttendanceProfiles users={users} viewerRole={user?.role} />;
 
   return (
     <div className="space-y-6">

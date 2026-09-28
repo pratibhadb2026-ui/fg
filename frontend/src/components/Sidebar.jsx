@@ -18,6 +18,7 @@ export default function Sidebar({ activeTab, setActiveTab, role }) {
       case 'admin':
         return [
           { id: 'users', label: 'User Management', icon: Users, desc: 'Add/Edit Core & Junior Accounts' },
+          { id: 'attendance_profiles', label: 'Attendance Profiles', icon: CalendarCheck, desc: 'Click a name to view full history' },
           { id: 'attendance_master', label: 'Attendance Override', icon: Clock, desc: 'Modify Core & Junior Records' },
           { id: 'audit_logs', label: 'Login & Audit Logs', icon: ShieldAlert, desc: 'Track Logins & Security Events' },
           { id: 'tasks_overview', label: 'All Tasks Overview', icon: ClipboardList, desc: 'Monitor Organization Work' },
@@ -27,6 +28,7 @@ export default function Sidebar({ activeTab, setActiveTab, role }) {
       case 'president':
         return [
           { id: 'cat_a_approval', label: 'Core Team President Approvals', icon: Award, desc: 'Approve Core Attendance' },
+          { id: 'attendance_profiles', label: 'Attendance Profiles', icon: CalendarCheck, desc: 'View member-wise attendance history' },
           { id: 'cat_b_attendance', label: 'Juniors Attendance', icon: CalendarCheck, desc: 'Monitor Junior Attendance' },
           { id: 'tasks_overview', label: 'Tasks Monitor', icon: ClipboardList, desc: 'View Work Progress' },
           { id: 'equipment', label: 'Equipment Tracking', icon: Package, desc: 'Track camera & equipment' },
@@ -34,6 +36,7 @@ export default function Sidebar({ activeTab, setActiveTab, role }) {
         ];
       case 'cat_a':
         return [
+          { id: 'attendance_profiles', label: 'Junior Attendance Profiles', icon: CalendarCheck, desc: 'Click a Junior to see full history' },
           { id: 'cat_b_attendance', label: 'Mark Junior Attendance', icon: Clock, desc: 'Daily Session Attendance Window' },
           { id: 'cat_a_self', label: 'Core Self-Attendance', icon: CheckCircle2, desc: 'Request President Confirmation' },
           { id: 'task_assign', label: 'Assign & Track Tasks', icon: ClipboardList, desc: 'Assign Work to Juniors' },

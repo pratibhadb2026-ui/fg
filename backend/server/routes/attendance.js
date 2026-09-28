@@ -28,8 +28,14 @@ router.get('/', authenticateToken, (req, res) => {
     records = records.filter(r => r.team === team);
   }
 
-  if (req.user.role === 'cat_b' && !userId && !team) {
-    records = records.filter(r => r.userId === req.user.id || r.userUsername === req.user.username);
+  // Attendance visibility rules: Juniors can only see themselves; Core can inspect Juniors;
+  // President/Admin can inspect everyone.
+  if (req.user.role === 'cat_b') {
+    const own = records.filter(r => r.userId === req.user.id || r.userUsername === req.user.username);
+    records = userId ? own.filter(r => r.userId === userId || r.userUsername === userId) : own;
+  } else if (req.user.role === 'cat_a' && userId) {
+    const target = db.findOne('users', u => u.id === userId || u.username === userId);
+    if (target && target.role !== 'cat_b') return res.status(403).json({ error: 'Core can view only Junior attendance profiles' });
   }
 
   res.json(records);

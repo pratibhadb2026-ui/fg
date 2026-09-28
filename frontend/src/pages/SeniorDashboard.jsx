@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { apiRequest } from '../utils/api.js';
+import AttendanceProfiles from '../components/AttendanceProfiles.jsx';
 import { useAuth } from '../context/AuthContext.jsx';
 import { 
   Clock, 
@@ -18,6 +19,7 @@ import {
 export default function SeniorDashboard({ activeTab }) {
   const { user } = useAuth();
   const [juniors, setJuniors] = useState([]);
+  const [allMembers, setAllMembers] = useState([]);
   const [catBAttendance, setCatBAttendance] = useState([]);
   const [catAAttendance, setCatAAttendance] = useState([]);
   const [tasks, setTasks] = useState([]);
@@ -52,7 +54,9 @@ export default function SeniorDashboard({ activeTab }) {
     setLoading(true);
     try {
       const allUsers = await apiRequest('/users');
-      const jrList = Array.isArray(allUsers) ? allUsers.filter(u => u && u.role === 'cat_b') : [];
+      const safeUsers = Array.isArray(allUsers) ? allUsers.filter(Boolean) : [];
+      const jrList = safeUsers.filter(u => u.role === 'cat_b');
+      setAllMembers(safeUsers);
       setJuniors(jrList);
 
       const todayStr = new Date().toISOString().split('T')[0];
@@ -131,6 +135,8 @@ export default function SeniorDashboard({ activeTab }) {
       showFeedbackMsg('Task assignment error: ' + err.message, 'error');
     }
   };
+
+  if (activeTab === 'attendance_profiles') return <AttendanceProfiles users={user?.role === 'president' ? allMembers : juniors} viewerRole={user?.role} />;
 
   return (
     <div className="space-y-6">
