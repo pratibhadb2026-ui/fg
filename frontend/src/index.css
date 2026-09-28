@@ -347,6 +347,52 @@ table tr:hover td {
 .transition-all { transition-property: all; transition-duration: 150ms; }
 .transition-colors { transition-property: background-color, border-color, color; transition-duration: 150ms; }
 
+
+/* Working Days & Holidays action buttons */
+.calendar-action-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.875rem;
+}
+
+.calendar-action {
+  min-height: 72px;
+  width: 100%;
+  padding: 0.85rem 1rem;
+  border-radius: 1rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.55rem;
+  color: #ffffff;
+  font-size: 0.9rem;
+  font-weight: 800;
+  line-height: 1.25;
+  text-align: center;
+  transition: transform 0.15s ease, filter 0.15s ease, box-shadow 0.15s ease;
+}
+
+.calendar-action:hover {
+  transform: translateY(-1px);
+  filter: brightness(1.08);
+}
+
+.calendar-action-working {
+  background: linear-gradient(135deg, #059669, #10b981);
+  box-shadow: 0 8px 20px rgba(16, 185, 129, 0.22);
+}
+
+.calendar-action-holiday {
+  background: linear-gradient(135deg, #e11d48, #f43f5e);
+  box-shadow: 0 8px 20px rgba(244, 63, 94, 0.22);
+}
+
+@media (max-width: 520px) {
+  .calendar-action-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
 button { cursor: pointer; border: none; }
 button:disabled { cursor: not-allowed; opacity: 0.6; }
 

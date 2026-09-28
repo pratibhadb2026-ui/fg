@@ -73,9 +73,12 @@ router.post('/working-days', authenticateToken, authorizeRoles('admin'), (req, r
   if (existing) db.update('working_days', r => r.id === existing.id, payload);
   else db.insert('working_days', payload);
 
-  // If a date is changed to non-working, remove only system-generated absences for that date.
+  // A holiday/non-working day must have NO Junior attendance record at all.
+  // Remove both old auto-absences and any Present/Absent records that may have been
+  // created before the date was changed to a holiday. This keeps the day completely
+  // out of Junior attendance calculations.
   if (!isWorkingDay) {
-    db.remove('attendance', r => r.date === date && r.autoMarked === true);
+    db.remove('attendance', r => r.date === date && r.role === 'cat_b');
   }
 
   logAudit(req, 'ATTENDANCE_CALENDAR_UPDATED', req.user.username, req.user.role,
@@ -87,6 +90,18 @@ router.post('/working-days', authenticateToken, authorizeRoles('admin'), (req, r
 router.get('/', authenticateToken, (req, res) => {
   const { date, userId, role, team } = req.query;
   let records = db.get('attendance');
+
+  // Safety cleanup: never expose Junior attendance records for a holiday/non-working day.
+  // This also fixes legacy records created before the Working Days feature existed.
+  const juniorNonWorking = new Set(
+    records
+      .filter(r => r.role === 'cat_b' && !getWorkingDay(r.date).isWorkingDay)
+      .map(r => r.date)
+  );
+  if (juniorNonWorking.size) {
+    db.remove('attendance', r => r.role === 'cat_b' && juniorNonWorking.has(r.date));
+    records = db.get('attendance');
+  }
 
   if (date) ensureTodayJuniorAbsences(date);
 

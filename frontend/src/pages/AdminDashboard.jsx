@@ -357,9 +357,15 @@ export default function AdminDashboard({ activeTab }) {
           <div className="font-bold">{calendarInfo.date}: {calendarInfo.isWorkingDay ? 'Working Day' : 'Non-working Day'}</div>
           <div className="text-xs mt-1 opacity-80">{calendarInfo.reason}</div>
         </div>}
-        <div className="flex flex-wrap gap-3">
-          <button onClick={() => setCalendarDay(true)} className="px-4 py-3 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-sm">Mark Working Day</button>
-          <button onClick={() => setCalendarDay(false)} className="px-4 py-3 rounded-xl bg-slate-700 hover:bg-slate-600 text-white font-bold text-sm">Mark Holiday / Non-working</button>
+        <div className="calendar-action-grid">
+          <button type="button" onClick={() => setCalendarDay(true)} className="calendar-action calendar-action-working">
+            <CheckCircle2 className="w-5 h-5" />
+            <span>Mark Working Day</span>
+          </button>
+          <button type="button" onClick={() => setCalendarDay(false)} className="calendar-action calendar-action-holiday">
+            <CalendarDays className="w-5 h-5" />
+            <span>Mark Holiday / Non-working</span>
+          </button>
         </div>
         <div className="p-4 rounded-2xl bg-cyan-500/10 border border-cyan-500/20 text-sm text-slate-200">
           On a working day, Juniors who are not marked Present are automatically recorded as <b>Absent</b>. On a non-working day, no Absent record is created and the date is excluded from attendance calculation.
