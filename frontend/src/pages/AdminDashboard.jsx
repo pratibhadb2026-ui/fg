@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { apiRequest } from '../utils/api.js';
 import { useAuth } from '../context/AuthContext.jsx';
 import { 
@@ -16,7 +16,9 @@ import {
   CheckCircle,
   AlertCircle,
   CheckCircle2,
-  XCircle
+  XCircle,
+  Upload,
+  Download
 } from 'lucide-react';
 
 export default function AdminDashboard({ activeTab }) {
@@ -27,26 +29,10 @@ export default function AdminDashboard({ activeTab }) {
   const [catBAttendance, setCatBAttendance] = useState([]);
   const [tasks, setTasks] = useState([]);
   const [juniors, setJuniors] = useState([]);
-  const [designations, setDesignations] = useState(() => {
-    try {
-      const saved = localStorage.getItem('designations');
-      if (saved) return JSON.parse(saved);
-    } catch (e) {}
-    return [
-      'System Administrator',
-      'Organization President',
-      'Core Project Lead',
-      'Core Operations Head',
-      'Core Technical Lead',
-      'Junior Web Developer',
-      'Junior Frontend Designer',
-      'Junior Content Associate',
-      'Junior QA Tester',
-      'Junior UI/UX Associate'
-    ];
-  });
-  const [showDesignationsModal, setShowDesignationsModal] = useState(false);
-  const [newDesignation, setNewDesignation] = useState('');
+  const bulkFileRef = useRef(null);
+  const [showBulkImportModal, setShowBulkImportModal] = useState(false);
+  const [bulkImporting, setBulkImporting] = useState(false);
+
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [roleFilter, setRoleFilter] = useState('all');
@@ -62,7 +48,7 @@ export default function AdminDashboard({ activeTab }) {
     name: '',
     role: 'cat_b',
     category: 'Juniors',
-    designation: 'Junior Team Member',
+    designation: '',
     team: 'Team Alpha',
     phone: ''
   });
@@ -153,7 +139,7 @@ export default function AdminDashboard({ activeTab }) {
         name: '',
         role: 'cat_b',
         category: 'Juniors',
-        designation: 'Junior Team Member',
+        designation: '',
         team: 'Team Alpha',
         phone: ''
       });
@@ -164,31 +150,85 @@ export default function AdminDashboard({ activeTab }) {
     }
   };
 
-  const saveDesignations = (list) => {
-    const cleaned = [...new Set(list.map(d => String(d).trim()).filter(Boolean))];
-    setDesignations(cleaned);
-    try { localStorage.setItem('designations', JSON.stringify(cleaned)); } catch (e) {}
+  const normalizeBulkRole = (value) => {
+    const v = String(value || '').trim().toLowerCase();
+    if (['cat_a', 'core', 'core team', 'a'].includes(v)) return { role: 'cat_a', category: 'Core' };
+    if (['president', 'president authority', 'leader'].includes(v)) return { role: 'president', category: 'Leadership' };
+    if (['admin', 'super admin', 'administrator'].includes(v)) return { role: 'admin', category: 'Leadership' };
+    return { role: 'cat_b', category: 'Juniors' };
   };
 
-  const handleAddDesignation = () => {
-    const value = newDesignation.trim();
-    if (!value) {
-      showFeedbackMsg('Please enter a designation name.', 'error');
+  const downloadBulkTemplate = () => {
+    if (!window.XLSX) {
+      showFeedbackMsg('Excel helper is still loading. Please try again.', 'error');
       return;
     }
-    if (designations.some(d => d.toLowerCase() === value.toLowerCase())) {
-      showFeedbackMsg('This designation already exists.', 'error');
-      return;
-    }
-    saveDesignations([...designations, value]);
-    setNewDesignation('');
-    showFeedbackMsg(`Designation "${value}" added.`, 'success');
+    const rows = [
+      { name: 'Ramesh Verma', username: 'ramesh01', password: 'ChangeMe123', role: 'cat_b', designation: 'Video Editor', phone: '9876543210', team: 'Team Alpha' },
+      { name: 'Priya Sharma', username: 'priya01', password: 'ChangeMe123', role: 'cat_a', designation: 'Core Technical Lead', phone: '9876543211', team: 'Team Alpha' }
+    ];
+    const ws = window.XLSX.utils.json_to_sheet(rows);
+    const wb = window.XLSX.utils.book_new();
+    window.XLSX.utils.book_append_sheet(wb, ws, 'Users');
+    window.XLSX.writeFile(wb, 'PRATIBHA_BULK_USERS_TEMPLATE.xlsx');
   };
 
-  const handleDeleteDesignation = (designation) => {
-    if (!window.confirm(`Delete designation "${designation}"?`)) return;
-    saveDesignations(designations.filter(d => d !== designation));
-    showFeedbackMsg(`Designation "${designation}" deleted.`, 'success');
+  const handleBulkImport = async (e) => {
+    const file = e.target.files?.[0];
+    e.target.value = '';
+    if (!file) return;
+    if (!window.XLSX) {
+      showFeedbackMsg('Excel helper is still loading. Please try again.', 'error');
+      return;
+    }
+    setBulkImporting(true);
+    try {
+      const buffer = await file.arrayBuffer();
+      const wb = window.XLSX.read(buffer, { type: 'array' });
+      const sheet = wb.Sheets[wb.SheetNames[0]];
+      const rawRows = window.XLSX.utils.sheet_to_json(sheet, { defval: '' });
+      if (!rawRows.length) throw new Error('Excel sheet is empty.');
+      const normalizeKey = (k) => String(k).trim().toLowerCase().replace(/[^a-z0-9]/g, '');
+      const rows = rawRows.map(row => {
+        const mapped = {};
+        Object.entries(row).forEach(([k, v]) => { mapped[normalizeKey(k)] = String(v ?? '').trim(); });
+        const roleInfo = normalizeBulkRole(mapped.role);
+        return {
+          name: mapped.name,
+          username: mapped.username,
+          password: mapped.password,
+          role: roleInfo.role,
+          category: roleInfo.category,
+          designation: mapped.designation || '',
+          team: mapped.team || 'General',
+          phone: mapped.phone || ''
+        };
+      });
+      const invalid = rows.findIndex(r => !r.name || !r.username || !r.password || !r.role);
+      if (invalid >= 0) throw new Error(`Row ${invalid + 2}: name, username, password and role are required.`);
+
+      let success = 0;
+      const failed = [];
+      for (let i = 0; i < rows.length; i++) {
+        try {
+          await apiRequest('/users', 'POST', rows[i]);
+          success++;
+        } catch (err) {
+          failed.push(`Row ${i + 2} (${rows[i].username}): ${err.message}`);
+        }
+      }
+      await fetchAdminData();
+      setShowBulkImportModal(false);
+      if (failed.length) {
+        showFeedbackMsg(`Bulk import complete: ${success} created, ${failed.length} failed. ${failed.slice(0, 2).join(' | ')}`, 'error');
+      } else {
+        showFeedbackMsg(`🎉 Bulk import complete: ${success} account(s) created successfully.`, 'success');
+      }
+    } catch (err) {
+      showFeedbackMsg('Excel import error: ' + err.message, 'error');
+    } finally {
+      setBulkImporting(false);
+    }
   };
 
   const handleDeleteUser = async (id, name) => {
@@ -296,12 +336,12 @@ export default function AdminDashboard({ activeTab }) {
               </button>
 
               <button
-                onClick={() => setShowDesignationsModal(true)}
+                onClick={() => setShowBulkImportModal(true)}
                 className="px-3 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs shadow-sm flex items-center space-x-2 transition-all"
-                title="Manage Designations"
+                title="Bulk import users from Excel"
               >
-                <Users className="w-4 h-4" />
-                <span>Manage Designations</span>
+                <Upload className="w-4 h-4" />
+                <span>Bulk Excel</span>
               </button>
             </div>
           </div>
@@ -745,15 +785,13 @@ export default function AdminDashboard({ activeTab }) {
 
               <div>
                 <label className="block text-slate-300 mb-1 font-semibold">Designation</label>
-                <select
+                <input
+                  type="text"
                   value={newUser.designation}
                   onChange={(e) => setNewUser({ ...newUser, designation: e.target.value })}
                   className="w-full p-2.5 glass-input text-white"
-                >
-                  {designations.map((d) => (
-                    <option key={d} value={d}>{d}</option>
-                  ))}
-                </select>
+                  placeholder="e.g. Video Editor"
+                />
               </div>
 
               <div className="flex justify-end space-x-2 pt-4 border-t border-slate-800">
@@ -813,16 +851,13 @@ export default function AdminDashboard({ activeTab }) {
 
                 <div>
                 <label className="block text-slate-300 mb-1">Designation</label>
-                <select
+                <input
+                  type="text"
                   value={editFormData.designation || ''}
                   onChange={(e) => setEditFormData({ ...editFormData, designation: e.target.value })}
                   className="w-full p-2.5 glass-input text-white"
-                >
-                  <option value="">-- Select Designation --</option>
-                  {designations.map((d) => (
-                    <option key={d} value={d}>{d}</option>
-                  ))}
-                </select>
+                  placeholder="e.g. Video Editor"
+                />
               </div>
 
               <div>
@@ -855,54 +890,33 @@ export default function AdminDashboard({ activeTab }) {
         </div>
       )}
 
-      {/* MODAL: MANAGE DESIGNATIONS */}
-      {showDesignationsModal && (
+      {/* MODAL: BULK EXCEL IMPORT */}
+      {showBulkImportModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80">
-          <div className="glass-panel max-w-lg w-full max-h-[90vh] overflow-y-auto p-6 shadow-2xl border border-slate-700">
-            <div className="flex items-center justify-between mb-4">
+          <div className="glass-panel max-w-lg w-full p-6 shadow-2xl border border-slate-700">
+            <div className="flex items-center justify-between mb-3">
               <div>
-                <h3 className="text-lg font-bold text-white">Manage Designations</h3>
-                <p className="text-xs text-slate-400 mt-1">Add or remove designations used in user accounts.</p>
+                <h3 className="text-lg font-bold text-white">Bulk Add Users from Excel</h3>
+                <p className="text-xs text-slate-400 mt-1">Upload one Excel file and accounts will be created automatically.</p>
               </div>
-              <button onClick={() => setShowDesignationsModal(false)} className="px-3 py-1.5 rounded-lg bg-slate-800 text-slate-300">Close</button>
+              <button onClick={() => setShowBulkImportModal(false)} className="px-3 py-1.5 rounded-lg bg-slate-800 text-slate-300">Close</button>
             </div>
-
             <div className="space-y-4 text-xs">
-              <div>
-                <label className="block text-slate-300 mb-1 font-semibold">Add New Designation</label>
-                <div className="flex items-center gap-2">
-                  <input
-                    type="text"
-                    value={newDesignation}
-                    onChange={(e) => setNewDesignation(e.target.value)}
-                    onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); handleAddDesignation(); } }}
-                    placeholder="e.g. Video Editor"
-                    className="flex-1 min-w-0 p-2.5 glass-input text-white"
-                  />
-                  <button onClick={handleAddDesignation} className="px-4 py-2.5 rounded-xl bg-cyan-500 hover:bg-cyan-400 text-white font-bold">Add</button>
-                </div>
+              <div className="p-4 rounded-xl bg-slate-900/70 border border-slate-800">
+                <p className="font-semibold text-slate-200 mb-2">Excel columns</p>
+                <p className="text-slate-400">name, username, password, role, designation, phone, team</p>
+                <p className="text-slate-500 mt-2">Role can be: cat_b, cat_a, president or admin. Category is generated automatically.</p>
               </div>
-
-              <div>
-                <label className="block text-slate-300 mb-1 font-semibold">Existing Designations ({designations.length})</label>
-                <div className="space-y-2 max-h-80 overflow-y-auto pr-1">
-                  {designations.length === 0 ? (
-                    <div className="p-4 rounded-xl bg-slate-800 text-slate-400 text-center">No designations added.</div>
-                  ) : designations.map((d) => (
-                    <div key={d} className="flex items-center justify-between gap-3 p-3 rounded-xl bg-slate-800 border border-slate-700">
-                      <div className="text-slate-200 text-sm break-words">{d}</div>
-                      <button
-                        onClick={() => handleDeleteDesignation(d)}
-                        className="px-3 py-1.5 rounded-lg bg-red-500/10 hover:bg-red-500/20 text-red-300 border border-red-500/20 text-xs font-semibold shrink-0"
-                      >Delete</button>
-                    </div>
-                  ))}
-                </div>
+              <div className="flex flex-col sm:flex-row gap-2">
+                <button type="button" onClick={downloadBulkTemplate} className="flex-1 px-4 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-white font-semibold flex items-center justify-center gap-2">
+                  <Download className="w-4 h-4" /> Download Excel Format
+                </button>
+                <button type="button" disabled={bulkImporting} onClick={() => bulkFileRef.current?.click()} className="flex-1 px-4 py-2.5 rounded-xl bg-cyan-500 hover:bg-cyan-400 disabled:opacity-50 text-white font-bold flex items-center justify-center gap-2">
+                  <Upload className="w-4 h-4" /> {bulkImporting ? 'Importing...' : 'Upload Excel'}
+                </button>
+                <input ref={bulkFileRef} type="file" accept=".xlsx,.xls,.csv" onChange={handleBulkImport} className="hidden" />
               </div>
-
-              <div className="flex justify-end pt-2 border-t border-slate-800">
-                <button onClick={() => setShowDesignationsModal(false)} className="px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300">Done</button>
-              </div>
+              <div className="text-[11px] text-slate-500 border-t border-slate-800 pt-3">Tip: Download the format, fill the rows, save it, then upload it here. For one or two users, use “+ Add New User Account”.</div>
             </div>
           </div>
         </div>
