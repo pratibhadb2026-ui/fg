@@ -35,7 +35,7 @@ router.post('/', authenticateToken, authorizeRoles('admin'), async (req, res) =>
     username: username.trim(),
     password: hashedPassword,
     name: name.trim(),
-    role: role, // 'admin', 'cat_a', 'cat_b', 'president'
+    role: role, // 'admin', 'cat_a', 'cat_b', 'president', 'alumni'
     category: category || (role === 'cat_a' ? 'A' : role === 'cat_b' ? 'B' : 'Leadership'),
     designation: designation || 'Team Member',
     team: team || 'General',

@@ -33,6 +33,7 @@ export default function SeniorDashboard({ activeTab }) {
 
   // New Task Form
   const [showAssignModal, setShowAssignModal] = useState(false);
+  const [juniorSearch, setJuniorSearch] = useState('');
   const [newTask, setNewTask] = useState({
     title: '',
     description: '',
@@ -425,19 +426,17 @@ export default function SeniorDashboard({ activeTab }) {
 
               <div>
                 <label className="block text-slate-300 mb-1 font-semibold">Assign to Junior Member *</label>
-                <select
-                  required
-                  value={newTask.assignedTo}
-                  onChange={(e) => setNewTask({ ...newTask, assignedTo: e.target.value })}
-                  className="w-full p-2.5 glass-input text-white font-semibold"
-                >
-                  <option value="">-- Select Junior Member ({juniors.length} Available) --</option>
-                  {juniors.map((jr) => (
-                    <option key={jr.id} value={jr.id}>
-                      {jr.name} ({jr.team} - {jr.designation})
-                    </option>
+                <input value={juniorSearch} onChange={e=>setJuniorSearch(e.target.value)} placeholder={`Search Junior (${juniors.length} available)`} className="w-full p-2.5 glass-input text-white mb-2" />
+                <div className="max-h-52 overflow-y-auto overscroll-contain rounded-xl border border-slate-800 bg-slate-950/70 p-2 space-y-1">
+                  {juniors.filter(j=>`${j.name} ${j.username} ${j.designation||''} ${j.team||''}`.toLowerCase().includes(juniorSearch.toLowerCase())).map((jr)=>(
+                    <button type="button" key={jr.id} onClick={()=>setNewTask({...newTask,assignedTo:jr.id})} className={`w-full text-left p-3 rounded-xl border transition ${newTask.assignedTo===jr.id?'border-cyan-400 bg-cyan-500/10':'border-slate-800 bg-slate-900/60 hover:bg-slate-800'}`}>
+                      <div className="font-semibold text-white">{jr.name}</div>
+                      <div className="text-[11px] text-slate-500">{jr.username} · {jr.designation||'Team Member'} · {jr.team||'General'}</div>
+                    </button>
                   ))}
-                </select>
+                  {juniors.filter(j=>`${j.name} ${j.username} ${j.designation||''} ${j.team||''}`.toLowerCase().includes(juniorSearch.toLowerCase())).length===0 && <div className="p-3 text-xs text-slate-500 text-center">No Junior found.</div>}
+                </div>
+                {!newTask.assignedTo && <p className="text-[11px] text-amber-300 mt-1">Select a Junior from the scrollable list above.</p>}
               </div>
 
               <div className="grid grid-cols-2 gap-2">

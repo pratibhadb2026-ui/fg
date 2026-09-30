@@ -58,8 +58,8 @@ router.get('/team-status', authenticateToken, (req, res) => {
   res.json(teamData);
 });
 
-// Create / Assign Task (Admin, Category A Seniors, President)
-router.post('/', authenticateToken, authorizeRoles('admin', 'cat_a', 'president'), (req, res) => {
+// Create / Assign Task: Admin/Core/President can assign to Juniors; Alumni can assign to Core/President.
+router.post('/', authenticateToken, authorizeRoles('admin', 'cat_a', 'president', 'alumni'), (req, res) => {
   const { title, description, assignedTo, priority, deadline } = req.body;
 
   if (!title || !assignedTo) {
@@ -69,7 +69,14 @@ router.post('/', authenticateToken, authorizeRoles('admin', 'cat_a', 'president'
   // Flexible user matching by id OR username
   const targetUser = db.findOne('users', u => u.id === assignedTo || u.username === assignedTo || u.id === 'user_' + assignedTo);
   if (!targetUser) {
-    return res.status(404).json({ error: 'Target assigned Junior user not found' });
+    return res.status(404).json({ error: 'Target user not found' });
+  }
+
+  if (req.user.role === 'alumni' && !['cat_a','president'].includes(targetUser.role)) {
+    return res.status(403).json({ error: 'Alumni can assign tasks only to Core Team or President.' });
+  }
+  if (['cat_a','president'].includes(req.user.role) && targetUser.role !== 'cat_b') {
+    return res.status(403).json({ error: 'Core/President can assign tasks only to Juniors.' });
   }
 
   const newTask = db.insert('tasks', {
@@ -81,6 +88,7 @@ router.post('/', authenticateToken, authorizeRoles('admin', 'cat_a', 'president'
     assignedBy: req.user.id,
     assignedByName: req.user.name,
     team: targetUser.team,
+    sourceRole: req.user.role,
     priority: priority || 'Medium',
     status: 'Pending',
     progress: 0,

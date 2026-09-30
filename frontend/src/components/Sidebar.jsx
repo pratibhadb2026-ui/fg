@@ -9,7 +9,9 @@ import {
   CalendarCheck,
   Award,
   Package,
-  CalendarDays
+  CalendarDays,
+  LayoutDashboard,
+  Send
 } from 'lucide-react';
 
 export default function Sidebar({ activeTab, setActiveTab, role }) {
@@ -17,6 +19,7 @@ export default function Sidebar({ activeTab, setActiveTab, role }) {
     switch (role) {
       case 'admin':
         return [
+          { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard, desc: 'Today, tasks, events & attendance' },
           { id: 'users', label: 'User Management', icon: Users, desc: 'Add/Edit Core & Junior Accounts' },
           { id: 'attendance_profiles', label: 'Attendance Profiles', icon: CalendarCheck, desc: 'Click a name to view full history' },
           { id: 'attendance_master', label: 'Attendance Override', icon: Clock, desc: 'Modify Core & Junior Records' },
@@ -28,6 +31,7 @@ export default function Sidebar({ activeTab, setActiveTab, role }) {
         ];
       case 'president':
         return [
+          { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard, desc: 'Today, tasks, events & attendance' },
           { id: 'cat_a_approval', label: 'Core Team President Approvals', icon: Award, desc: 'Approve Core Attendance' },
           { id: 'attendance_profiles', label: 'Attendance Profiles', icon: CalendarCheck, desc: 'View member-wise attendance history' },
           { id: 'cat_b_attendance', label: 'Juniors Attendance', icon: CalendarCheck, desc: 'Monitor Junior Attendance' },
@@ -37,6 +41,7 @@ export default function Sidebar({ activeTab, setActiveTab, role }) {
         ];
       case 'cat_a':
         return [
+          { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard, desc: 'Today, tasks, events & attendance' },
           { id: 'attendance_profiles', label: 'Junior Attendance Profiles', icon: CalendarCheck, desc: 'Click a Junior to see full history' },
           { id: 'cat_b_attendance', label: 'Mark Junior Attendance', icon: Clock, desc: 'Daily Session Attendance Window' },
           { id: 'cat_a_self', label: 'Core Self-Attendance', icon: CheckCircle2, desc: 'Request President Confirmation' },
@@ -46,11 +51,18 @@ export default function Sidebar({ activeTab, setActiveTab, role }) {
         ];
       case 'cat_b':
         return [
+          { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard, desc: 'Today, tasks, events & attendance' },
           { id: 'my_attendance', label: 'My Attendance', icon: CalendarCheck, desc: 'View Arrival Time Logs' },
           { id: 'my_tasks', label: 'My Tasks & Work Status', icon: CheckSquare, desc: 'Accept & Update Task Progress' },
           { id: 'equipment', label: 'Equipment Tracking', icon: Package, desc: 'See equipment issued' },
           { id: 'events', label: 'Events & Shoots', icon: CalendarDays, desc: 'See planned shoots' },
           // Team Workspace removed for juniors (not used)
+        ];
+      case 'alumni':
+        return [
+          { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard, desc: 'See what is happening this week' },
+          { id: 'alumni_assign', label: 'Assign to Core / President', icon: Send, desc: 'Directly send work to leadership' },
+          { id: 'events', label: 'Events & Shoots', icon: CalendarDays, desc: 'See upcoming plans and shoots' },
         ];
       default:
         return [];

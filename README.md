@@ -208,3 +208,12 @@ MIT
 ---
 
 **Happy Coding! 🎉**
+
+## New updates in this version
+- Dashboard for all roles with today's tasks, next 7-day tasks, upcoming events/shoots and attendance snapshot.
+- Junior task visibility is restricted to tasks assigned to that Junior.
+- Core/President can monitor task progress.
+- Task assignment picker for Core/President now uses a searchable scrollable list for mobile.
+- Alumni role added. Admin can create Alumni accounts directly or through bulk Excel (`role=alumni`).
+- Alumni can view the dashboard/events and can assign tasks only to Core Team or President.
+- PWA manifest and camera-style app icon added so the portal can be installed on a phone home screen.

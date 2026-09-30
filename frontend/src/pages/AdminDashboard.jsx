@@ -165,6 +165,7 @@ export default function AdminDashboard({ activeTab }) {
     const v = String(value || '').trim().toLowerCase();
     if (['cat_a', 'core', 'core team', 'a'].includes(v)) return { role: 'cat_a', category: 'Core' };
     if (['president', 'president authority', 'leader'].includes(v)) return { role: 'president', category: 'Leadership' };
+    if (['alumni', 'alumnus', 'alumna'].includes(v)) return { role: 'alumni', category: 'Alumni' };
     if (['admin', 'super admin', 'administrator'].includes(v)) return { role: 'admin', category: 'Leadership' };
     return { role: 'cat_b', category: 'Juniors' };
   };
@@ -176,7 +177,8 @@ export default function AdminDashboard({ activeTab }) {
     }
     const rows = [
       { name: 'Ramesh Verma', username: 'ramesh01', password: 'ChangeMe123', role: 'cat_b', designation: 'Video Editor', phone: '9876543210', team: 'Team Alpha' },
-      { name: 'Priya Sharma', username: 'priya01', password: 'ChangeMe123', role: 'cat_a', designation: 'Core Technical Lead', phone: '9876543211', team: 'Team Alpha' }
+      { name: 'Priya Sharma', username: 'priya01', password: 'ChangeMe123', role: 'cat_a', designation: 'Core Technical Lead', phone: '9876543211', team: 'Team Alpha' },
+      { name: 'Aman Alumni', username: 'amanalumni', password: 'ChangeMe123', role: 'alumni', designation: 'Alumni Mentor', phone: '', team: '' }
     ];
     const ws = window.XLSX.utils.json_to_sheet(rows);
     const wb = window.XLSX.utils.book_new();
@@ -440,6 +442,7 @@ export default function AdminDashboard({ activeTab }) {
                 <option value="cat_a">Core Team</option>
                 <option value="cat_b">Juniors</option>
                 <option value="admin">Super Admin</option>
+                <option value="alumni">Alumni</option>
                 <option value="president">President</option>
               </select>
             </div>
@@ -472,9 +475,10 @@ export default function AdminDashboard({ activeTab }) {
                         u.role === 'admin' ? 'bg-cyan-500/20 text-cyan-300 border-cyan-500/30' :
                         u.role === 'president' ? 'bg-amber-500/20 text-amber-300 border-amber-500/30' :
                         u.role === 'cat_a' ? 'bg-purple-500/20 text-purple-300 border-purple-500/30' :
+                        u.role === 'alumni' ? 'bg-orange-500/20 text-orange-300 border-orange-500/30' :
                         'bg-emerald-500/20 text-emerald-300 border-emerald-500/30'
                       }`}>
-                        {u.role === 'admin' ? 'Super Admin' : u.role === 'president' ? 'President' : u.role === 'cat_a' ? 'Core Team' : 'Juniors'}
+                        {u.role === 'admin' ? 'Super Admin' : u.role === 'president' ? 'President' : u.role === 'cat_a' ? 'Core Team' : u.role === 'alumni' ? 'Alumni' : 'Juniors'}
                       </span>
                     </td>
                     <td className="text-slate-300">{u.designation || 'N/A'}</td>
@@ -803,7 +807,7 @@ export default function AdminDashboard({ activeTab }) {
       {showAddUserModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80">
           <div className="glass-panel max-w-md w-full max-h-[90vh] overflow-y-auto p-6 shadow-2xl border border-slate-700">
-            <h3 className="text-lg font-bold text-white mb-4">Create New Account (Core / Junior)</h3>
+            <h3 className="text-lg font-bold text-white mb-4">Create New Account</h3>
             <form onSubmit={handleCreateUser} className="space-y-4 text-xs">
               <div>
                 <label className="block text-slate-300 mb-1 font-semibold">Full Name *</label>
@@ -848,7 +852,7 @@ export default function AdminDashboard({ activeTab }) {
                     value={newUser.role}
                     onChange={(e) => {
                       const role = e.target.value;
-                      const category = role === 'cat_a' ? 'Core' : role === 'cat_b' ? 'Juniors' : 'Leadership';
+                      const category = role === 'cat_a' ? 'Core' : role === 'cat_b' ? 'Juniors' : role === 'alumni' ? 'Alumni' : 'Leadership';
                       setNewUser({ ...newUser, role, category });
                     }}
                     className="w-full p-2.5 glass-input text-white font-semibold"
@@ -857,6 +861,7 @@ export default function AdminDashboard({ activeTab }) {
                     <option value="cat_a">Core Team</option>
                     <option value="president">President Authority</option>
                     <option value="admin">Super Admin</option>
+                <option value="alumni">Alumni</option>
                   </select>
                 </div>
 
@@ -923,6 +928,7 @@ export default function AdminDashboard({ activeTab }) {
                     <option value="cat_a">Core Team</option>
                     <option value="president">President</option>
                     <option value="admin">Super Admin</option>
+                    <option value="alumni">Alumni</option>
                   </select>
                 </div>
 

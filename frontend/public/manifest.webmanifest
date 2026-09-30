@@ -1,0 +1,13 @@
+{
+  "name": "Pratibha Main Portal",
+  "short_name": "Pratibha",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#080f1e",
+  "theme_color": "#08a5e9",
+  "description": "Pratibha Club team workspace for tasks, attendance and events.",
+  "icons": [
+    {"src":"/icons/icon-192.png","sizes":"192x192","type":"image/png","purpose":"any maskable"},
+    {"src":"/icons/icon-512.png","sizes":"512x512","type":"image/png","purpose":"any maskable"}
+  ]
+}

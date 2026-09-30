@@ -8,7 +8,8 @@ import {
   Award,
   Layers,
   Crown,
-  UserCheck
+  UserCheck,
+  Users
 } from 'lucide-react';
 
 export default function Navbar() {
@@ -24,6 +25,8 @@ export default function Navbar() {
         return { label: 'Core Team', color: 'bg-purple-500/20 text-purple-300 border-purple-500/40', icon: Layers };
       case 'cat_b':
         return { label: 'Juniors', color: 'bg-emerald-500/20 text-emerald-300 border-emerald-500/40', icon: UserCheck };
+      case 'alumni':
+        return { label: 'Alumni', color: 'bg-orange-500/20 text-orange-300 border-orange-500/40', icon: Users };
       default:
         return { label: 'User', color: 'bg-slate-700 text-slate-300 border-slate-600', icon: User };
     }
@@ -66,7 +69,7 @@ export default function Navbar() {
                 <div className="text-[10px] text-slate-400">{user.designation || ''}</div>
               </div>
               <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${badge.color}`}>
-                {user.role === 'admin' ? 'Super Admin' : user.role === 'president' ? 'President' : user.role === 'cat_a' ? 'Core Team' : 'Juniors'}
+                {user.role === 'admin' ? 'Super Admin' : user.role === 'president' ? 'President' : user.role === 'cat_a' ? 'Core Team' : user.role === 'cat_b' ? 'Juniors' : 'Alumni'}
               </span>
             </div>
 

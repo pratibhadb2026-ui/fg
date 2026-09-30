@@ -7,6 +7,8 @@ import AdminDashboard from './pages/AdminDashboard.jsx';
 import SeniorDashboard from './pages/SeniorDashboard.jsx';
 import JuniorDashboard from './pages/JuniorDashboard.jsx';
 import ManagementDashboard from './pages/ManagementDashboard.jsx';
+import Dashboard from './pages/Dashboard.jsx';
+import AlumniDashboard from './pages/AlumniDashboard.jsx';
 
 function MainApp() {
   const { user, loading } = useAuth();
@@ -30,10 +32,11 @@ function MainApp() {
   // Set default active tab based on role if not set
   let currentTab = activeTab;
   if (currentTab === 'default') {
-    if (user.role === 'admin') currentTab = 'users';
-    else if (user.role === 'president') currentTab = 'cat_a_approval';
-    else if (user.role === 'cat_a') currentTab = 'cat_b_attendance';
-    else if (user.role === 'cat_b') currentTab = 'my_attendance';
+    if (user.role === 'admin') currentTab = 'dashboard';
+    else if (user.role === 'president') currentTab = 'dashboard';
+    else if (user.role === 'cat_a') currentTab = 'dashboard';
+    else if (user.role === 'cat_b') currentTab = 'dashboard';
+    else if (user.role === 'alumni') currentTab = 'dashboard';
   }
 
   return (
@@ -43,7 +46,11 @@ function MainApp() {
         <Sidebar activeTab={currentTab} setActiveTab={setActiveTab} role={user.role} />
         
         <main className="flex-1 overflow-x-auto">
-          {(currentTab === 'equipment' || currentTab === 'events') ? (
+          {currentTab === 'dashboard' ? (
+            <Dashboard />
+          ) : currentTab === 'alumni_assign' ? (
+            <AlumniDashboard activeTab={currentTab} />
+          ) : (currentTab === 'equipment' || currentTab === 'events') ? (
             <ManagementDashboard activeTab={currentTab} />
           ) : (
           <>
@@ -64,6 +71,9 @@ function MainApp() {
           {/* Category B Junior Views */}
           {user.role === 'cat_b' && (
             <JuniorDashboard activeTab={currentTab} />
+          )}
+          {user.role === 'alumni' && currentTab !== 'dashboard' && currentTab !== 'alumni_assign' && (
+            <AlumniDashboard activeTab={currentTab} />
           )}
           </>
           )}
