@@ -1,0 +1,17 @@
+PRATIBHA CLUB - CREATE SECTION UPDATE
+
+New navigation:
+- Create
+  - Create Task
+  - Add Equipment
+  - Create Event / Shoot
+
+Tasks, Equipment Tracking and Events & Shoots are now record/view sections.
+Creation forms are centralized under Create.
+
+For Git:
+git add .
+git commit -m "Centralize task equipment and event creation"
+git push
+
+Vercel should redeploy after push.

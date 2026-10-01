@@ -9,6 +9,7 @@ import JuniorDashboard from './pages/JuniorDashboard.jsx';
 import ManagementDashboard from './pages/ManagementDashboard.jsx';
 import Dashboard from './pages/Dashboard.jsx';
 import AlumniDashboard from './pages/AlumniDashboard.jsx';
+import CreateCenter from './pages/CreateCenter.jsx';
 
 function MainApp() {
   const { user, loading } = useAuth();
@@ -50,6 +51,8 @@ function MainApp() {
             <Dashboard />
           ) : currentTab === 'alumni_assign' ? (
             <AlumniDashboard activeTab={currentTab} />
+          ) : (currentTab === 'create' || currentTab === 'create_task' || currentTab === 'create_equipment' || currentTab === 'create_event') ? (
+            <CreateCenter activeTab={currentTab} setActiveTab={setActiveTab} />
           ) : (currentTab === 'equipment' || currentTab === 'events') ? (
             <ManagementDashboard activeTab={currentTab} />
           ) : (

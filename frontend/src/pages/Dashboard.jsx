@@ -37,8 +37,9 @@ export default function Dashboard() {
   const myAtt = attendance.find(a => a.userId === user.id || a.userUsername === user.username);
   const presentCount = attendance.filter(a => a.status === 'Present' || a.status === 'Approved').length;
   const absentCount = attendance.filter(a => a.status === 'Absent').length;
-  const visibleTodayTasks = user.role === 'cat_b' ? todayTasks.filter(t => t.assignedTo === user.id || t.assignedToUsername === user.username) : todayTasks;
-  const visibleWeekTasks = user.role === 'cat_b' ? weekTasks.filter(t => t.assignedTo === user.id || t.assignedToUsername === user.username) : weekTasks;
+  const belongsToTask = (t) => t.assignedTo === user.id || t.assignedToUsername === user.username || (Array.isArray(t.groupMembers) && t.groupMembers.some(m => m.id === user.id || m.username === user.username));
+  const visibleTodayTasks = user.role === 'cat_b' ? todayTasks.filter(belongsToTask) : todayTasks;
+  const visibleWeekTasks = user.role === 'cat_b' ? weekTasks.filter(belongsToTask) : weekTasks;
 
   return <div className="space-y-6">
     <div className="glass-panel p-6 rounded-3xl bg-gradient-to-br from-slate-900/90 to-slate-950/80">

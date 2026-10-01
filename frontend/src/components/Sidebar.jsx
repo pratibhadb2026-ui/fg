@@ -11,7 +11,8 @@ import {
   Package,
   CalendarDays,
   LayoutDashboard,
-  Send
+  Send,
+  PlusCircle
 } from 'lucide-react';
 
 export default function Sidebar({ activeTab, setActiveTab, role }) {
@@ -27,7 +28,8 @@ export default function Sidebar({ activeTab, setActiveTab, role }) {
           { id: 'audit_logs', label: 'Login & Audit Logs', icon: ShieldAlert, desc: 'Track Logins & Security Events' },
           { id: 'tasks_overview', label: 'All Tasks Overview', icon: ClipboardList, desc: 'Monitor Organization Work' },
           { id: 'equipment', label: 'Equipment Tracking', icon: Package, desc: 'Track who has camera & gear' },
-          { id: 'events', label: 'Events & Shoots', icon: CalendarDays, desc: 'Plan event dates and shoot team' }
+          { id: 'events', label: 'Events & Shoots', icon: CalendarDays, desc: 'View events and shoot plans' },
+          { id: 'create', label: 'Create', icon: PlusCircle, desc: 'Create Task, Equipment or Event' }
         ];
       case 'president':
         return [
@@ -37,7 +39,8 @@ export default function Sidebar({ activeTab, setActiveTab, role }) {
           { id: 'cat_b_attendance', label: 'Juniors Attendance', icon: CalendarCheck, desc: 'Monitor Junior Attendance' },
           { id: 'tasks_overview', label: 'Tasks Monitor', icon: ClipboardList, desc: 'View Work Progress' },
           { id: 'equipment', label: 'Equipment Tracking', icon: Package, desc: 'Track camera & equipment' },
-          { id: 'events', label: 'Events & Shoots', icon: CalendarDays, desc: 'Plan events and shoot team' }
+          { id: 'events', label: 'Events & Shoots', icon: CalendarDays, desc: 'View events and shoot plans' },
+          { id: 'create', label: 'Create', icon: PlusCircle, desc: 'Create Task, Equipment or Event' }
         ];
       case 'cat_a':
         return [
@@ -47,7 +50,8 @@ export default function Sidebar({ activeTab, setActiveTab, role }) {
           { id: 'cat_a_self', label: 'Core Self-Attendance', icon: CheckCircle2, desc: 'Request President Confirmation' },
           { id: 'task_assign', label: 'Assign & Track Tasks', icon: ClipboardList, desc: 'Assign Work to Juniors' },
           { id: 'equipment', label: 'Equipment Tracking', icon: Package, desc: 'See equipment currently issued' },
-          { id: 'events', label: 'Events & Shoots', icon: CalendarDays, desc: 'See planned shoots' }
+          { id: 'events', label: 'Events & Shoots', icon: CalendarDays, desc: 'See planned shoots' },
+          { id: 'create', label: 'Create', icon: PlusCircle, desc: 'Create Task, Equipment or Event' }
         ];
       case 'cat_b':
         return [

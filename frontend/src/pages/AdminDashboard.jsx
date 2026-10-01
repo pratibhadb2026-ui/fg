@@ -732,14 +732,6 @@ export default function AdminDashboard({ activeTab }) {
               </h2>
               <p className="text-xs text-slate-400 mt-1">Monitor organization-wide assigned work, progress, and deadlines ({tasks.length} Total Tasks)</p>
             </div>
-
-            <button
-              onClick={() => setShowAssignModal(true)}
-              className="px-4 py-2.5 rounded-xl bg-cyan-500 hover:bg-cyan-400 text-white font-bold text-xs shadow-lg flex items-center space-x-2"
-            >
-              <Plus className="w-4 h-4" />
-              <span>+ Assign New Task</span>
-            </button>
           </div>
 
           <div className="overflow-x-auto rounded-2xl border border-slate-800">

@@ -21,7 +21,7 @@ router.get('/', authenticateToken, (req, res) => {
   }
 
   if (req.user.role === 'cat_b' && !assignedTo && !team) {
-    tasks = tasks.filter(t => t.assignedTo === req.user.id || t.assignedToUsername === req.user.username);
+    tasks = tasks.filter(t => t.assignedTo === req.user.id || t.assignedToUsername === req.user.username || (Array.isArray(t.groupMembers) && t.groupMembers.some(m => m.id === req.user.id || m.username === req.user.username)));
   }
 
   res.json(tasks);
@@ -35,11 +35,12 @@ router.get('/team-status', authenticateToken, (req, res) => {
   }
 
   const teammates = db.find('users', u => u.team === userTeam && u.role === 'cat_b');
-  const teamTasks = db.find('tasks', t => t.team === userTeam);
+  const teamTasks = db.find('tasks', t => t.team === userTeam || (Array.isArray(t.groupMembers) && t.groupMembers.some(m => m.team === userTeam)));
+
   const teamAttendance = db.find('attendance', a => a.team === userTeam && a.date === new Date().toISOString().split('T')[0]);
 
   const teamData = teammates.map(member => {
-    const memberTasks = teamTasks.filter(t => t.assignedTo === member.id || t.assignedToUsername === member.username);
+    const memberTasks = teamTasks.filter(t => t.assignedTo === member.id || t.assignedToUsername === member.username || (Array.isArray(t.groupMembers) && t.groupMembers.some(m => m.id === member.id || m.username === member.username)));
     const todayAtt = teamAttendance.find(a => a.userId === member.id || a.userUsername === member.username);
 
     return {
@@ -60,45 +61,52 @@ router.get('/team-status', authenticateToken, (req, res) => {
 
 // Create / Assign Task: Admin/Core/President can assign to Juniors; Alumni can assign to Core/President.
 router.post('/', authenticateToken, authorizeRoles('admin', 'cat_a', 'president', 'alumni'), (req, res) => {
-  const { title, description, assignedTo, priority, deadline } = req.body;
+  const { title, description, assignedTo, assignedToIds, priority, deadline } = req.body;
+  const requestedIds = Array.isArray(assignedToIds) && assignedToIds.length ? assignedToIds : (assignedTo ? [assignedTo] : []);
 
-  if (!title || !assignedTo) {
-    return res.status(400).json({ error: 'Title and assigned junior user are required' });
+  if (!title || !requestedIds.length) {
+    return res.status(400).json({ error: 'Title and at least one assignee are required' });
   }
 
-  // Flexible user matching by id OR username
-  const targetUser = db.findOne('users', u => u.id === assignedTo || u.username === assignedTo || u.id === 'user_' + assignedTo);
-  if (!targetUser) {
-    return res.status(404).json({ error: 'Target user not found' });
+  const targetUsers = requestedIds
+    .map(value => db.findOne('users', u => u.id === value || u.username === value || u.id === 'user_' + value))
+    .filter(Boolean);
+
+  if (targetUsers.length !== requestedIds.length) {
+    return res.status(404).json({ error: 'One or more selected users were not found' });
   }
 
-  if (req.user.role === 'alumni' && !['cat_a','president'].includes(targetUser.role)) {
+  if (req.user.role === 'alumni' && targetUsers.some(u => !['cat_a','president'].includes(u.role))) {
     return res.status(403).json({ error: 'Alumni can assign tasks only to Core Team or President.' });
   }
-  if (['cat_a','president'].includes(req.user.role) && targetUser.role !== 'cat_b') {
+  if (['cat_a','president'].includes(req.user.role) && targetUsers.some(u => u.role !== 'cat_b')) {
     return res.status(403).json({ error: 'Core/President can assign tasks only to Juniors.' });
   }
 
+  const isGroup = targetUsers.length > 1;
+  const firstTarget = targetUsers[0];
   const newTask = db.insert('tasks', {
     title: title.trim(),
     description: description || '',
-    assignedTo: targetUser.id,
-    assignedToName: targetUser.name,
-    assignedToUsername: targetUser.username,
+    assignedTo: isGroup ? null : firstTarget.id,
+    assignedToName: isGroup ? `Group (${targetUsers.length} members)` : firstTarget.name,
+    assignedToUsername: isGroup ? targetUsers.map(u => u.username).join(', ') : firstTarget.username,
+    groupMembers: targetUsers.map(u => ({ id: u.id, name: u.name, username: u.username, designation: u.designation || '', team: u.team || '' })),
+    isGroupTask: isGroup,
     assignedBy: req.user.id,
     assignedByName: req.user.name,
-    team: targetUser.team,
+    team: isGroup ? '' : (firstTarget.team || ''),
     sourceRole: req.user.role,
     priority: priority || 'Medium',
     status: 'Pending',
     progress: 0,
     deadline: deadline || new Date(Date.now() + 86400000 * 3).toISOString().split('T')[0],
     comments: [
-      { author: req.user.name, text: `Task assigned with priority ${priority || 'Medium'}`, time: new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }) }
+      { author: req.user.name, text: `${isGroup ? 'Group task' : 'Task'} assigned with priority ${priority || 'Medium'}`, time: new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }) }
     ]
   });
 
-  logAudit(req, 'TASK_ASSIGNED', req.user.username, req.user.role, `Assigned task "${title}" to ${targetUser.name} (${targetUser.team})`);
+  logAudit(req, 'TASK_ASSIGNED', req.user.username, req.user.role, `Assigned ${isGroup ? 'group task' : 'task'} "${title}" to ${targetUsers.map(u => u.name).join(', ')}`);
   res.status(201).json(newTask);
 });
 
