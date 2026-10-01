@@ -393,7 +393,13 @@ table tr:hover td {
   }
 }
 
-button { cursor: pointer; border: none; }
+button {
+  cursor: pointer;
+  border: none;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+}
 button:disabled { cursor: not-allowed; opacity: 0.6; }
 
 /* Custom Scrollbars */

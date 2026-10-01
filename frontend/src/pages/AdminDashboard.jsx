@@ -27,6 +27,9 @@ export default function AdminDashboard({ activeTab }) {
   const { user } = useAuth();
   const [users, setUsers] = useState([]);
   const [logs, setLogs] = useState([]);
+  const [groupTask, setGroupTask] = useState(null);
+  const [adminTaskEdit, setAdminTaskEdit] = useState(null);
+  const [adminTaskForm, setAdminTaskForm] = useState({ status: 'Pending', progress: 0, comment: '' });
   const [attendance, setAttendance] = useState([]);
   const [catBAttendance, setCatBAttendance] = useState([]);
   const [tasks, setTasks] = useState([]);
@@ -118,6 +121,30 @@ export default function AdminDashboard({ activeTab }) {
       console.error('Error fetching admin data:', err);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleClearAuditLogs = async () => {
+    if (!window.confirm('Clear ALL Login & Audit Logs? This cannot be undone.')) return;
+    try {
+      await apiRequest('/audit/logs', 'DELETE');
+      setLogs([]);
+      showFeedbackMsg('All Login & Audit Logs cleared successfully.', 'success');
+    } catch (err) {
+      showFeedbackMsg('Unable to clear audit logs: ' + err.message, 'error');
+    }
+  };
+
+  const handleAdminTaskUpdate = async (e) => {
+    e.preventDefault();
+    if (!adminTaskEdit) return;
+    try {
+      await apiRequest(`/tasks/${adminTaskEdit.id}/status`, 'PUT', adminTaskForm);
+      setAdminTaskEdit(null);
+      await fetchAdminData();
+      showFeedbackMsg('Task updated by System Admin.', 'success');
+    } catch (err) {
+      showFeedbackMsg('Unable to update task: ' + err.message, 'error');
     }
   };
 
@@ -520,13 +547,21 @@ export default function AdminDashboard({ activeTab }) {
               </h2>
               <p className="text-xs text-slate-400 mt-1">Tracks exact login timestamps, user IP addresses, devices & actions</p>
             </div>
-            <button
-              onClick={fetchAdminData}
-              className="p-2 rounded-xl bg-slate-800 text-slate-300 hover:text-white hover:bg-slate-700 transition-colors"
-              title="Refresh Logs"
-            >
-              <RefreshCw className="w-4 h-4" />
-            </button>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={handleClearAuditLogs}
+                className="px-3 py-2 rounded-xl bg-red-500/15 border border-red-500/30 text-red-300 hover:bg-red-500/25 font-bold text-xs flex items-center gap-2"
+              >
+                <Trash2 className="w-4 h-4" /> Clear Logs
+              </button>
+              <button
+                onClick={fetchAdminData}
+                className="p-2 rounded-xl bg-slate-800 text-slate-300 hover:text-white hover:bg-slate-700 transition-colors"
+                title="Refresh Logs"
+              >
+                <RefreshCw className="w-4 h-4" />
+              </button>
+            </div>
           </div>
 
           <div className="overflow-x-auto rounded-2xl border border-slate-800">
@@ -745,6 +780,7 @@ export default function AdminDashboard({ activeTab }) {
                   <th>Status</th>
                   <th>Progress Bar</th>
                   <th>Deadline</th>
+                  <th>Admin Action</th>
                 </tr>
               </thead>
               <tbody>
@@ -754,7 +790,24 @@ export default function AdminDashboard({ activeTab }) {
                       <div>{task.title}</div>
                       <div className="text-xs text-slate-400 font-normal">{task.description}</div>
                     </td>
-                    <td className="font-medium text-slate-200">{task.assignedToName}</td>
+                    <td className="font-medium text-slate-200">
+                      {task.isGroupTask && Array.isArray(task.groupMembers) ? (
+                        <button
+                          type="button"
+                          onClick={() => setGroupTask(task)}
+                          className="text-left font-bold rounded-lg px-2 py-1"
+                          style={{
+                            background:'#0f2433',
+                            color:'#7dd3fc',
+                            border:'1px solid rgba(56,189,248,0.42)',
+                            display:'inline-block',
+                            lineHeight:'1.25'
+                          }}
+                        >
+                          👥 Group ({task.groupMembers.length}) · View Members
+                        </button>
+                      ) : task.assignedToName}
+                    </td>
                     <td className="text-slate-300">{task.team}</td>
                     <td>
                       <span className={`px-2 py-0.5 rounded text-[11px] font-bold ${
@@ -787,10 +840,47 @@ export default function AdminDashboard({ activeTab }) {
                       </div>
                     </td>
                     <td className="text-slate-300 font-mono">{task.deadline}</td>
+                    <td>
+                      <button
+                        type="button"
+                        onClick={() => { setAdminTaskEdit(task); setAdminTaskForm({ status: task.status, progress: task.progress, comment: '' }); }}
+                        className="px-2.5 py-1.5 rounded-lg bg-cyan-500/15 border border-cyan-500/30 text-cyan-300 font-bold text-[11px]"
+                      >
+                        Admin Update
+                      </button>
+                    </td>
                   </tr>
                 ))}
               </tbody>
             </table>
+          </div>
+        </div>
+      )}
+
+      {groupTask && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
+          <div className="glass-panel max-w-md w-full p-6 rounded-3xl border border-cyan-500/30 shadow-2xl">
+            <div className="flex items-start justify-between mb-4"><div><h3 className="text-lg font-bold text-white">Group Task Members</h3><p className="text-xs text-cyan-400 mt-1">{groupTask.title}</p></div><button onClick={() => setGroupTask(null)} className="text-slate-400 hover:text-white text-xl">✕</button></div>
+            <div className="space-y-2 max-h-72 overflow-y-auto">
+              {(groupTask.groupMembers || []).map(m => <div key={m.id || m.username} className="p-3 rounded-xl border border-slate-700 bg-slate-900/80"><div className="font-bold text-white">{m.name}</div><div className="text-xs text-slate-400">@{m.username} · {m.designation || 'Team Member'}{m.team ? ` · ${m.team}` : ''}</div></div>)}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {adminTaskEdit && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
+          <div className="glass-panel max-w-md w-full p-6 rounded-3xl border border-cyan-500/30 shadow-2xl">
+            <h3 className="text-lg font-bold text-white mb-1">Admin Task Update</h3>
+            <p className="text-xs text-cyan-400 mb-4">{adminTaskEdit.title}</p>
+            <form onSubmit={handleAdminTaskUpdate} className="space-y-4">
+              <select value={adminTaskForm.status} onChange={e => { const status=e.target.value; setAdminTaskForm({...adminTaskForm,status,progress:status==='Completed'?100:adminTaskForm.progress}); }} className="w-full p-2.5 rounded-xl glass-input text-white">
+                <option value="Pending">Pending</option><option value="Accepted">Accepted</option><option value="In Progress">In Progress</option><option value="Completed">Completed</option>
+              </select>
+              <div><div className="flex justify-between text-xs text-slate-300"><span>Progress</span><span className="text-cyan-300">{adminTaskForm.progress}%</span></div><input type="range" min="0" max="100" step="5" value={adminTaskForm.progress} onChange={e=>setAdminTaskForm({...adminTaskForm,progress:Number(e.target.value)})} className="w-full accent-cyan-400" /></div>
+              <input value={adminTaskForm.comment} onChange={e=>setAdminTaskForm({...adminTaskForm,comment:e.target.value})} placeholder="Admin note" className="w-full p-2.5 rounded-xl glass-input text-white" />
+              <div className="flex justify-end gap-2"><button type="button" onClick={()=>setAdminTaskEdit(null)} className="px-4 py-2 rounded-xl bg-slate-800 text-slate-300">Cancel</button><button type="submit" className="px-4 py-2 rounded-xl bg-cyan-500 text-white font-bold">Save Admin Update</button></div>
+            </form>
           </div>
         </div>
       )}

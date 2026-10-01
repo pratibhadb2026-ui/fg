@@ -11,7 +11,7 @@ router.get('/', authenticateToken, (req, res) => {
   let tasks = db.get('tasks');
 
   if (assignedTo) {
-    tasks = tasks.filter(t => t.assignedTo === assignedTo || t.assignedToUsername === assignedTo);
+    tasks = tasks.filter(t => t.assignedTo === assignedTo || t.assignedToUsername === assignedTo || (Array.isArray(t.groupMembers) && t.groupMembers.some(m => m.id === assignedTo || m.username === assignedTo)));
   }
   if (team) {
     tasks = tasks.filter(t => t.team === team);
@@ -118,6 +118,12 @@ router.put('/:id/status', authenticateToken, (req, res) => {
   const task = db.findOne('tasks', t => t.id === id);
   if (!task) {
     return res.status(404).json({ error: 'Task not found' });
+  }
+
+  // Once any assignee marks a task Completed, the task is locked.
+  // Only System Admin is allowed to change a completed task afterwards.
+  if (task.status === 'Completed' && req.user.role !== 'admin') {
+    return res.status(403).json({ error: 'This task is already completed. Only System Admin can update a completed task.' });
   }
 
   let updatedComments = [...(task.comments || [])];

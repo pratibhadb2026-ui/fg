@@ -1,6 +1,7 @@
 import express from 'express';
 import { db } from '../db.js';
 import { authenticateToken, authorizeRoles } from '../middleware/auth.js';
+import { logAudit } from '../middleware/auditLogger.js';
 
 const router = express.Router();
 
@@ -13,3 +14,12 @@ router.get('/logs', authenticateToken, authorizeRoles('admin'), (req, res) => {
 });
 
 export default router;
+
+
+// Clear all login/security audit logs. Admin only.
+router.delete('/logs', authenticateToken, authorizeRoles('admin'), (req, res) => {
+  const count = db.get('audit_logs').length;
+  db.remove('audit_logs', () => true);
+  // Keep the clear action itself out of the cleared audit history.
+  res.json({ message: 'Audit logs cleared successfully', count });
+});

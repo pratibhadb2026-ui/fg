@@ -34,10 +34,13 @@ export default function SeniorDashboard({ activeTab }) {
   // New Task Form
   const [showAssignModal, setShowAssignModal] = useState(false);
   const [juniorSearch, setJuniorSearch] = useState('');
+  const [groupTask, setGroupTask] = useState(null);
   const [newTask, setNewTask] = useState({
     title: '',
     description: '',
     assignedTo: '',
+    assignedToIds: [],
+    assignmentMode: 'individual',
     priority: 'Medium',
     deadline: new Date(Date.now() + 86400000 * 3).toISOString().split('T')[0]
   });
@@ -115,18 +118,21 @@ export default function SeniorDashboard({ activeTab }) {
 
   const handleAssignTask = async (e) => {
     e.preventDefault();
-    if (!newTask.title || !newTask.assignedTo) {
-      showFeedbackMsg('Please enter task title and select a junior member.', 'error');
+    const selectedIds = newTask.assignmentMode === 'group' ? newTask.assignedToIds : (newTask.assignedTo ? [newTask.assignedTo] : []);
+    if (!newTask.title || !selectedIds.length) {
+      showFeedbackMsg('Please enter task title and select at least one junior member.', 'error');
       return;
     }
 
     try {
-      const created = await apiRequest('/tasks', 'POST', newTask);
+      const created = await apiRequest('/tasks', 'POST', { ...newTask, assignedToIds: selectedIds });
       setShowAssignModal(false);
       setNewTask({
         title: '',
         description: '',
         assignedTo: '',
+        assignedToIds: [],
+        assignmentMode: 'individual',
         priority: 'Medium',
         deadline: new Date(Date.now() + 86400000 * 3).toISOString().split('T')[0]
       });
@@ -346,7 +352,16 @@ export default function SeniorDashboard({ activeTab }) {
                       <div>{task.title}</div>
                       <div className="text-xs text-slate-400 font-normal">{task.description}</div>
                     </td>
-                    <td className="font-medium text-slate-200">{task.assignedToName}</td>
+                    <td className="font-medium text-slate-200">{task.isGroupTask && Array.isArray(task.groupMembers) ? (
+                      <button
+                        type="button"
+                        onClick={()=>setGroupTask(task)}
+                        className="font-bold rounded-lg px-2 py-1 text-left"
+                        style={{background:'#0f2433',color:'#7dd3fc',border:'1px solid rgba(56,189,248,0.42)',display:'inline-block',lineHeight:'1.25'}}
+                      >
+                        👥 Group ({task.groupMembers.length}) · View Members
+                      </button>
+                    ) : task.assignedToName}</td>
                     <td className="text-slate-300">{task.team}</td>
                     <td>
                       <span className={`px-2 py-0.5 rounded text-xs font-bold ${
@@ -387,6 +402,15 @@ export default function SeniorDashboard({ activeTab }) {
         </div>
       )}
 
+      {groupTask && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
+          <div className="glass-panel max-w-md w-full p-6 rounded-3xl border border-cyan-500/30 shadow-2xl">
+            <div className="flex items-start justify-between mb-4"><div><h3 className="text-lg font-bold text-white">Group Task Members</h3><p className="text-xs text-cyan-400 mt-1">{groupTask.title}</p></div><button onClick={()=>setGroupTask(null)} className="text-slate-400 hover:text-white text-xl">✕</button></div>
+            <div className="space-y-2 max-h-72 overflow-y-auto">{(groupTask.groupMembers||[]).map(m=><div key={m.id||m.username} className="p-3 rounded-xl border border-slate-700 bg-slate-900/80"><div className="font-bold text-white">{m.name}</div><div className="text-xs text-slate-400">@{m.username} · {m.designation||'Team Member'}{m.team?` · ${m.team}`:''}</div></div>)}</div>
+          </div>
+        </div>
+      )}
+
       {/* MODAL: ASSIGN TASK */}
       {showAssignModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80">
@@ -417,18 +441,26 @@ export default function SeniorDashboard({ activeTab }) {
               </div>
 
               <div>
-                <label className="block text-slate-300 mb-1 font-semibold">Assign to Junior Member *</label>
+                <label className="block text-slate-300 mb-1 font-semibold">Assign to Junior Member(s) *</label>
+                <div className="grid grid-cols-2 gap-2 mb-2">
+                  <button type="button" onClick={()=>setNewTask({...newTask,assignmentMode:'individual',assignedTo:newTask.assignedToIds[0] || newTask.assignedTo,assignedToIds:newTask.assignedTo ? [newTask.assignedTo] : newTask.assignedToIds})} style={{background:newTask.assignmentMode==='individual'?'#06b6d4':'#1e293b',color:newTask.assignmentMode==='individual'?'#082f49':'#e2e8f0',borderColor:newTask.assignmentMode==='individual'?'#22d3ee':'#475569'}} className="py-2 rounded-xl border font-bold">Individual</button>
+                  <button type="button" onClick={()=>setNewTask({...newTask,assignmentMode:'group',assignedTo:''})} style={{background:newTask.assignmentMode==='group'?'#06b6d4':'#1e293b',color:newTask.assignmentMode==='group'?'#082f49':'#e2e8f0',borderColor:newTask.assignmentMode==='group'?'#22d3ee':'#475569'}} className="py-2 rounded-xl border font-bold">Group Task</button>
+                </div>
                 <input value={juniorSearch} onChange={e=>setJuniorSearch(e.target.value)} placeholder={`Search Junior (${juniors.length} available)`} className="w-full p-2.5 glass-input text-white mb-2" />
                 <div className="max-h-52 overflow-y-auto overscroll-contain rounded-xl border border-slate-800 bg-slate-950/70 p-2 space-y-1">
-                  {juniors.filter(j=>`${j.name} ${j.username} ${j.designation||''} ${j.team||''}`.toLowerCase().includes(juniorSearch.toLowerCase())).map((jr)=>(
-                    <button type="button" key={jr.id} onClick={()=>setNewTask({...newTask,assignedTo:jr.id})} className={`w-full text-left p-3 rounded-xl border transition ${newTask.assignedTo===jr.id?'border-cyan-400 bg-cyan-500/10':'border-slate-800 bg-slate-900/60 hover:bg-slate-800'}`}>
-                      <div className="font-semibold text-white">{jr.name}</div>
-                      <div className="text-[11px] text-slate-500">{jr.username} · {jr.designation||'Team Member'} · {jr.team||'General'}</div>
-                    </button>
-                  ))}
+                  {juniors.filter(j=>`${j.name} ${j.username} ${j.designation||''} ${j.team||''}`.toLowerCase().includes(juniorSearch.toLowerCase())).map((jr)=>{
+                    const selected = newTask.assignmentMode==='group' ? newTask.assignedToIds.includes(jr.id) : newTask.assignedTo===jr.id;
+                    return <button type="button" key={jr.id} onClick={()=>{
+                      if(newTask.assignmentMode==='group'){ const ids=newTask.assignedToIds.includes(jr.id)?newTask.assignedToIds.filter(id=>id!==jr.id):[...newTask.assignedToIds,jr.id]; setNewTask({...newTask,assignedToIds:ids,assignedTo:ids[0]||''}); }
+                      else setNewTask({...newTask,assignedTo:jr.id,assignedToIds:[jr.id]});
+                    }} style={{background:selected?'rgba(6,182,212,.18)':'rgba(15,23,42,.8)',borderColor:selected?'#22d3ee':'#1e293b',color:'#fff'}} className="w-full text-left p-3 rounded-xl border transition">
+                      <div className="flex items-center justify-between"><div className="font-semibold">{jr.name}</div>{selected && <span className="text-[10px] font-extrabold text-cyan-200">✓ SELECTED</span>}</div>
+                      <div className="text-[11px] text-slate-400">{jr.username} · {jr.designation||'Team Member'} · {jr.team||'General'}</div>
+                    </button>;
+                  })}
                   {juniors.filter(j=>`${j.name} ${j.username} ${j.designation||''} ${j.team||''}`.toLowerCase().includes(juniorSearch.toLowerCase())).length===0 && <div className="p-3 text-xs text-slate-500 text-center">No Junior found.</div>}
                 </div>
-                {!newTask.assignedTo && <p className="text-[11px] text-amber-300 mt-1">Select a Junior from the scrollable list above.</p>}
+                <p className="text-[11px] text-cyan-300 mt-1">{(newTask.assignmentMode==='group'?newTask.assignedToIds.length:(newTask.assignedTo?1:0))} member(s) selected{newTask.assignmentMode==='group'?' for this group task':''}.</p>
               </div>
 
               <div className="grid grid-cols-2 gap-2">

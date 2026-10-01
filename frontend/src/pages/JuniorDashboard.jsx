@@ -22,6 +22,7 @@ export default function JuniorDashboard({ activeTab }) {
 
   // Status & Progress Update Modal
   const [selectedTask, setSelectedTask] = useState(null);
+  const [groupTask, setGroupTask] = useState(null);
   const [statusForm, setStatusForm] = useState({ status: 'In Progress', progress: 50, comment: '' });
 
   useEffect(() => {
@@ -183,6 +184,24 @@ export default function JuniorDashboard({ activeTab }) {
                   <div>Deadline: <span className="text-amber-400 font-mono font-medium">{task.deadline}</span></div>
                 </div>
 
+                {task.isGroupTask && Array.isArray(task.groupMembers) && (
+                  <button
+                    type="button"
+                    onClick={() => setGroupTask(task)}
+                    className="w-full text-left p-3 rounded-xl border transition"
+                    style={{
+                      background: '#0f2433',
+                      borderColor: 'rgba(56,189,248,0.45)',
+                      color: '#e0f2fe',
+                      display: 'block',
+                      boxShadow: 'inset 0 0 0 1px rgba(56,189,248,0.06)'
+                    }}
+                  >
+                    <div className="font-bold" style={{fontSize:'0.78rem', color:'#7dd3fc'}}>👥 Group Task · {task.groupMembers.length} members</div>
+                    <div className="text-xs mt-1" style={{color:'#cbd5e1'}}>Click to see everyone assigned to this task</div>
+                  </button>
+                )}
+
                 {/* Task Actions */}
                 <div className="flex items-center space-x-2 pt-2">
                   {task.status === 'Pending' ? (
@@ -193,6 +212,10 @@ export default function JuniorDashboard({ activeTab }) {
                       <Play className="w-3.5 h-3.5" />
                       <span>Accept Task</span>
                     </button>
+                  ) : task.status === 'Completed' ? (
+                    <div className="w-full py-2 rounded-xl bg-emerald-500/10 border border-emerald-500/30 text-emerald-300 font-semibold text-xs text-center">
+                      ✓ Completed · Locked for members
+                    </div>
                   ) : (
                     <button
                       onClick={() => {
@@ -208,6 +231,29 @@ export default function JuniorDashboard({ activeTab }) {
                 </div>
               </div>
             ))}
+          </div>
+        </div>
+      )}
+
+      {/* MODAL: GROUP MEMBERS */}
+      {groupTask && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
+          <div className="glass-panel max-w-md w-full p-6 rounded-3xl border border-cyan-500/30 shadow-2xl">
+            <div className="flex items-start justify-between mb-4">
+              <div>
+                <h3 className="text-lg font-bold text-white">Group Members</h3>
+                <p className="text-xs text-cyan-400 mt-1">{groupTask.title}</p>
+              </div>
+              <button onClick={() => setGroupTask(null)} className="text-slate-400 hover:text-white text-xl">✕</button>
+            </div>
+            <div className="space-y-2 max-h-72 overflow-y-auto">
+              {(groupTask.groupMembers || []).map((member) => (
+                <div key={member.id || member.username} className="p-3 rounded-xl border border-slate-700 bg-slate-900/80">
+                  <div className="font-bold text-white">{member.name}</div>
+                  <div className="text-xs text-slate-400">@{member.username} · {member.designation || 'Team Member'}{member.team ? ` · ${member.team}` : ''}</div>
+                </div>
+              ))}
+            </div>
           </div>
         </div>
       )}
