@@ -91,6 +91,13 @@ router.get('/', authenticateToken, (req, res) => {
   const { date, userId, role, team } = req.query;
   let records = db.get('attendance');
 
+  // Admin and Alumni are system/observer accounts, not attendance-profile members.
+  // Never expose their attendance records in the attendance module.
+  const hiddenUserIds = new Set(
+    db.find('users', u => ['admin','alumni'].includes(u.role)).flatMap(u => [u.id, u.username]).filter(Boolean)
+  );
+  records = records.filter(r => !hiddenUserIds.has(r.userId) && !hiddenUserIds.has(r.userUsername));
+
   // Safety cleanup: never expose Junior attendance records for a holiday/non-working day.
   // This also fixes legacy records created before the Working Days feature existed.
   const juniorNonWorking = new Set(

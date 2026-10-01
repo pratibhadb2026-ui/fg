@@ -6,14 +6,25 @@ const router = express.Router();
 const canManage = ['admin','president','cat_a'];
 
 router.get('/', authenticateToken, (req,res) => {
-  res.json(db.get('events'));
+  // Clean legacy events too, so Admin/Alumni never appear in shoot-member lists.
+  const events = db.get('events').map(event => ({
+    ...event,
+    members: Array.isArray(event.members)
+      ? event.members.filter(m => !['admin','alumni'].includes(m.role))
+      : []
+  }));
+  res.json(events);
 });
 
 router.post('/', authenticateToken, authorizeRoles(...canManage), (req,res) => {
   const { name, date, venue, description, members, callTime, status, notes } = req.body;
   if (!name || !date || !venue) return res.status(400).json({error:'Event name, date and venue are required'});
   const selected = Array.isArray(members) ? members : [];
-  const people = selected.map(id => db.findOne('users', u => u.id === id || u.username === id)).filter(Boolean);
+  // Admin and Alumni accounts are never valid shoot/event assignees.
+  const people = selected
+    .map(id => db.findOne('users', u => u.id === id || u.username === id))
+    .filter(Boolean)
+    .filter(p => !['admin','alumni'].includes(p.role));
   const item = db.insert('events', {
     name: name.trim(), date, venue: venue.trim(), description: description || '',
     members: people.map(p => ({id:p.id,name:p.name,role:p.role,team:p.team})),
@@ -28,7 +39,11 @@ router.put('/:id', authenticateToken, authorizeRoles(...canManage), (req,res) =>
   if (!event) return res.status(404).json({error:'Event not found'});
   const updates = {...req.body};
   if (Array.isArray(updates.members)) {
-    updates.members = updates.members.map(id => db.findOne('users', u => u.id === id || u.username === id)).filter(Boolean).map(p => ({id:p.id,name:p.name,role:p.role,team:p.team}));
+    updates.members = updates.members
+      .map(id => db.findOne('users', u => u.id === id || u.username === id))
+      .filter(Boolean)
+      .filter(p => !['admin','alumni'].includes(p.role))
+      .map(p => ({id:p.id,name:p.name,role:p.role,team:p.team}));
   }
   db.update('events', e => e.id === req.params.id, updates);
   res.json(db.findOne('events', e => e.id === req.params.id));

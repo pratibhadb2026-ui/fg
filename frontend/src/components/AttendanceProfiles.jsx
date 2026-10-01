@@ -4,7 +4,7 @@ import { apiRequest } from '../utils/api.js';
 
 export default function AttendanceProfiles({ users = [], viewerRole }) {
   const visibleUsers = useMemo(() => {
-    const list = Array.isArray(users) ? users.filter(Boolean) : [];
+    const list = Array.isArray(users) ? users.filter(u => u && !['admin','alumni'].includes(u.role)) : [];
     if (viewerRole === 'cat_a') return list.filter(u => u.role === 'cat_b');
     return list;
   }, [users, viewerRole]);
