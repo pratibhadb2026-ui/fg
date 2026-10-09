@@ -7,14 +7,16 @@ export default function ManagementDashboard({ activeTab }) {
   const { user } = useAuth();
   const [equipment,setEquipment]=useState([]), [events,setEvents]=useState([]), [msg,setMsg]=useState('');
   const [editEvent,setEditEvent]=useState(null), [eventUsers,setEventUsers]=useState([]), [saving,setSaving]=useState(false);
+  const [editTaskAssigneeIds,setEditTaskAssigneeIds]=useState([]);
+  const [editTaskTitle,setEditTaskTitle]=useState('');
   const canManage=['admin','president','cat_a'].includes(user?.role);
 
   const load=async()=>{try{const [e,ev]=await Promise.all([apiRequest('/equipment'),apiRequest('/events')]);setEquipment(e||[]);setEvents(ev||[]);}catch(err){setMsg(err.message)}};
   useEffect(()=>{load()},[activeTab]);
   useEffect(()=>{if(activeTab==='events') apiRequest('/users').then(x=>setEventUsers(Array.isArray(x)?x:[])).catch(()=>setEventUsers([]));},[activeTab]);
   const remove=async(type,id)=>{if(!confirm('Delete this record?'))return;try{await apiRequest('/'+type+'/'+id,'DELETE');await load();setMsg('Record deleted.')}catch(err){setMsg(err.message)}};
-  const openEdit=(x)=>setEditEvent({...x,members:(x.members||[]).map(m=>m.id)});
-  const saveEvent=async(e)=>{e.preventDefault();if(!editEvent)return;setSaving(true);try{await apiRequest('/events/'+editEvent.id,'PUT',editEvent);setEditEvent(null);await load();setMsg('Event / Shoot updated successfully.')}catch(err){setMsg(err.message)}finally{setSaving(false)}};
+  const openEdit=(x)=>{setEditEvent({...x,members:(x.members||[]).map(m=>m.id)});setEditTaskAssigneeIds([]);setEditTaskTitle(`Edit & Finalize Event: ${x.name}`);};
+  const saveEvent=async(e)=>{e.preventDefault();if(!editEvent)return;const previous=events.find(x=>x.id===editEvent.id);const isCompleting=editEvent.status==='Completed' && previous?.status!=='Completed';if(isCompleting && !editTaskAssigneeIds.length){setMsg('Event complete karne ke liye Edit Task me kam se kam 1 Core ya Junior select karo.');return;}setSaving(true);try{await apiRequest('/events/'+editEvent.id,'PUT',{...editEvent,generateEditTask:isCompleting,editAssigneeIds:editTaskAssigneeIds,editTaskTitle});setEditEvent(null);setEditTaskAssigneeIds([]);await load();setMsg(isCompleting?'Event completed and Edit Task generated successfully.':'Event / Shoot updated successfully.')}catch(err){setMsg(err.message)}finally{setSaving(false)}};
 
   if(activeTab==='equipment') return <div className="space-y-6">
     {msg&&<div className="glass-panel p-3 text-sm text-cyan-300">{msg}</div>}
@@ -73,6 +75,16 @@ export default function ManagementDashboard({ activeTab }) {
           </div>
           <div style={{fontSize:'12px',color:'#67e8f9',marginTop:'8px'}}>{(editEvent.members||[]).length} member(s) selected</div>
         </div>
+
+        {editEvent.status==='Completed' && (events.find(x=>x.id===editEvent.id)?.status !== 'Completed') && <div style={{marginTop:'18px',padding:'16px',border:'1px solid #7c3aed',background:'rgba(76,29,149,.16)',borderRadius:'16px'}}>
+          <div style={{fontSize:'13px',fontWeight:800,color:'#fff'}}>🎬 Event Edit Task</div>
+          <div style={{fontSize:'11px',color:'#c4b5fd',marginTop:'4px'}}>Event complete karte hi ek Edit Task automatically generate hoga. Core ya Junior ko assign karo.</div>
+          <input value={editTaskTitle} onChange={e=>setEditTaskTitle(e.target.value)} placeholder="Edit task title" style={{width:'100%',marginTop:'10px',background:'#0f172a',color:'#fff',border:'1px solid #475569',borderRadius:'10px',padding:'10px'}}/>
+          <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(220px,1fr))',gap:'8px',maxHeight:'210px',overflowY:'auto',marginTop:'10px'}}>
+            {eventUsers.filter(u=>['cat_a','cat_b'].includes(u.role)).map(u=>{const selected=editTaskAssigneeIds.includes(u.id);return <button type="button" key={u.id} onClick={()=>setEditTaskAssigneeIds(prev=>selected?prev.filter(id=>id!==u.id):[...prev,u.id])} style={{textAlign:'left',padding:'10px',borderRadius:'12px',border:`1px solid ${selected?'#22d3ee':'#475569'}`,background:selected?'rgba(6,182,212,.18)':'#111827',color:'#fff'}}><div style={{display:'flex',justifyContent:'space-between',gap:'8px'}}><b>{u.name}</b><span style={{fontSize:'10px',fontWeight:800,color:selected?'#67e8f9':'#94a3b8'}}>{selected?'✓ SELECTED':'SELECT'}</span></div><div style={{fontSize:'10px',color:'#cbd5e1',marginTop:'3px'}}>{u.role==='cat_a'?'Core Team':'Junior'} · {u.designation||'Team Member'} · {u.team||'General'}</div></button>})}
+          </div>
+          <div style={{fontSize:'11px',color:'#67e8f9',marginTop:'7px'}}>{editTaskAssigneeIds.length} member(s) selected</div>
+        </div>}
 
         <div style={{display:'flex',gap:'10px',justifyContent:'flex-end',paddingTop:'18px'}}>
           <button type="button" onClick={()=>setEditEvent(null)} style={{padding:'12px 18px',borderRadius:'12px',background:'#1e293b',color:'#fff',border:'1px solid #475569',fontWeight:800,cursor:'pointer'}}>Cancel</button>

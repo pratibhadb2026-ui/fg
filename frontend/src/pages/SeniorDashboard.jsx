@@ -35,6 +35,8 @@ export default function SeniorDashboard({ activeTab }) {
   const [showAssignModal, setShowAssignModal] = useState(false);
   const [juniorSearch, setJuniorSearch] = useState('');
   const [groupTask, setGroupTask] = useState(null);
+  const [taskEdit, setTaskEdit] = useState(null);
+  const [taskEditForm, setTaskEditForm] = useState({status:'In Progress',progress:10,comment:''});
   const [newTask, setNewTask] = useState({
     title: '',
     description: '',
@@ -92,11 +94,11 @@ export default function SeniorDashboard({ activeTab }) {
     }
   };
 
-  const handleRequestSelfAtt = async () => {
+  const handleRequestSelfAtt = async (status) => {
     try {
-      await apiRequest('/attendance/request-cat-a', 'POST', {});
+      await apiRequest('/attendance/request-cat-a', 'POST', { status });
       fetchSeniorData();
-      showFeedbackMsg("Core self-attendance requested! Awaiting President Approveation.", 'success');
+      showFeedbackMsg(`Core attendance submitted as ${status}. Awaiting President approval.`, 'success');
     } catch (err) {
       showFeedbackMsg('Error requesting self attendance: ' + err.message, 'error');
     }
@@ -113,6 +115,19 @@ export default function SeniorDashboard({ activeTab }) {
       showFeedbackMsg(`${approvalType.toUpperCase()} ${action}d attendance successfully!`, 'success');
     } catch (err) {
       showFeedbackMsg('Approval Error: ' + err.message, 'error');
+    }
+  };
+
+  const handleLeadershipTaskUpdate = async (e) => {
+    e.preventDefault();
+    if (!taskEdit) return;
+    try {
+      await apiRequest(`/tasks/${taskEdit.id}/status`, 'PUT', taskEditForm);
+      setTaskEdit(null);
+      fetchSeniorData();
+      showFeedbackMsg('Task progress updated successfully.', 'success');
+    } catch (err) {
+      showFeedbackMsg('Task update error: ' + err.message, 'error');
     }
   };
 
@@ -240,19 +255,16 @@ export default function SeniorDashboard({ activeTab }) {
             <div>
               <h2 className="text-xl font-bold text-white flex items-center space-x-2">
                 <Award className="w-5 h-5 text-amber-400" />
-                <span>Core Team President Approval</span>
+                <span>Core Attendance — President Approval</span>
               </h2>
-              <p className="text-xs text-slate-400 mt-1">Requires confirmation from the President before attendance is valid</p>
+              <p className="text-xs text-slate-400 mt-1">Core members mark their own Present/Absent status. President only approves the submitted status.</p>
             </div>
 
             {user.role === 'cat_a' && (
-              <button
-                onClick={handleRequestSelfAtt}
-                className="px-4 py-2.5 rounded-xl bg-gradient-to-r from-purple-500 to-indigo-600 hover:from-purple-400 hover:to-indigo-500 text-white font-bold text-xs shadow-lg flex items-center space-x-2"
-              >
-                <CalendarCheck className="w-4 h-4" />
-                <span>Request Today's Attendance</span>
-              </button>
+              <div className="flex gap-2">
+                <button onClick={()=>handleRequestSelfAtt('Present')} className="px-4 py-2.5 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-white font-bold text-xs shadow-lg">✓ Mark Present</button>
+                <button onClick={()=>handleRequestSelfAtt('Absent')} className="px-4 py-2.5 rounded-xl bg-red-500 hover:bg-red-400 text-white font-bold text-xs shadow-lg">✕ Mark Absent</button>
+              </div>
             )}
           </div>
 
@@ -284,7 +296,7 @@ export default function SeniorDashboard({ activeTab }) {
                           <span>Approved ({rec.presApprovedBy})</span>
                         </span>
                       ) : (
-                        <span className="text-amber-400 font-medium text-xs">Pending President Review</span>
+                        <span className="text-amber-400 font-medium text-xs">Pending • Submitted: {rec.requestedStatus || 'Present'}</span>
                       )}
                     </td>
 
@@ -302,13 +314,11 @@ export default function SeniorDashboard({ activeTab }) {
                     {/* Action Buttons */}
                     <td className="text-right space-x-1.5">
                       {/* President Approve Button */}
-                      {user.role === 'president' && !rec.presApprovedBy && (
-                        <button
-                          onClick={() => handleDualApprove(rec.id, 'president', 'approve')}
-                          className="px-3 py-1 rounded-lg bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold text-xs"
-                        >
-                          President Approve
-                        </button>
+                      {user.role === 'president' && !rec.presApprovedBy && rec.status === 'Pending Approval' && (
+                        <div className="flex justify-end gap-1.5">
+                          <button onClick={()=>handleDualApprove(rec.id, 'president', 'approve')} className="px-3 py-1 rounded-lg bg-emerald-500 hover:bg-emerald-400 text-white font-bold text-xs">Approve {rec.requestedStatus || 'Present'}</button>
+                          <button onClick={()=>handleDualApprove(rec.id, 'president', 'reject')} className="px-3 py-1 rounded-lg bg-red-500 hover:bg-red-400 text-white font-bold text-xs">Reject</button>
+                        </div>
                       )}
                     </td>
                   </tr>
@@ -393,11 +403,25 @@ export default function SeniorDashboard({ activeTab }) {
                         <span className="text-xs font-mono text-slate-300">{task.progress}%</span>
                       </div>
                     </td>
-                    <td className="text-slate-300 font-mono">{task.deadline}</td>
+                    <td className="text-slate-300 font-mono">{task.deadline}{(((task.assignedTo===user?.id)||(task.assignedToUsername===user?.username)||(Array.isArray(task.groupMembers)&&task.groupMembers.some(m=>m.id===user?.id||m.username===user?.username))) && task.status!=='Completed') && <button type="button" onClick={()=>{setTaskEdit(task);setTaskEditForm({status:task.status||'Pending',progress:Number(task.progress||0),comment:''})}} className="ml-2 px-2 py-1 rounded-lg font-bold text-[10px]" style={{background:'#f59e0b',color:'#111827'}}>Update</button>}</td>
                   </tr>
                 ))}
               </tbody>
             </table>
+          </div>
+        </div>
+      )}
+
+      {taskEdit && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80">
+          <div className="glass-panel max-w-md w-full p-6 rounded-3xl border border-amber-500/30 shadow-2xl">
+            <div className="flex items-start justify-between mb-4"><div><h3 className="text-lg font-bold text-white">Update Task Progress</h3><p className="text-xs text-amber-300 mt-1">{taskEdit.title}</p></div><button type="button" onClick={()=>setTaskEdit(null)} className="text-slate-400 hover:text-white text-xl">✕</button></div>
+            <form onSubmit={handleLeadershipTaskUpdate} className="space-y-4">
+              <div><label className="block text-xs text-slate-300 mb-1">Status</label><select value={taskEditForm.status} onChange={e=>setTaskEditForm({...taskEditForm,status:e.target.value})} className="w-full p-3 glass-input text-white"><option>Pending</option><option>Accepted</option><option>In Progress</option><option>Completed</option></select></div>
+              <div><div className="flex justify-between text-xs text-slate-300 mb-1"><span>Completion</span><b className="text-cyan-300">{taskEditForm.progress}%</b></div><input type="range" min="0" max="100" value={taskEditForm.progress} onChange={e=>setTaskEditForm({...taskEditForm,progress:Number(e.target.value)})} className="w-full"/></div>
+              <textarea rows="3" value={taskEditForm.comment} onChange={e=>setTaskEditForm({...taskEditForm,comment:e.target.value})} placeholder="Progress update / work note" className="w-full p-3 glass-input text-white"/>
+              <div className="flex justify-end gap-2"><button type="button" onClick={()=>setTaskEdit(null)} className="px-4 py-2 rounded-xl bg-slate-800 text-slate-300">Cancel</button><button type="submit" className="px-5 py-2 rounded-xl bg-amber-500 text-slate-950 font-extrabold">Save Update</button></div>
+            </form>
           </div>
         </div>
       )}

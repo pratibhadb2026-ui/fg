@@ -701,7 +701,7 @@ export default function AdminDashboard({ activeTab }) {
                     <th>Role Group</th>
                     <th>Status</th>
                     <th>Time Logged</th>
-                    <th>President Approval Info</th>
+                    <th>Approval / Change Info</th>
                     <th className="text-right">Admin Action</th>
                   </tr>
                 </thead>
@@ -728,7 +728,12 @@ export default function AdminDashboard({ activeTab }) {
                       </td>
                       <td className="text-cyan-300 font-mono">{att.timeLogged}</td>
                       <td className="text-xs text-slate-300">
-                        {att.category === 'Core' || att.category === 'A' ? (
+                        {att.adminModified ? (
+                          <div className="inline-flex flex-col gap-1">
+                            <span className="px-2 py-1 rounded-lg bg-amber-500/20 border border-amber-500/30 text-amber-300 font-extrabold text-[10px]">⚙ SYSTEM SE CHANGE HUA</span>
+                            <span className="text-slate-400 text-[10px]">Admin: {att.adminModifiedBy || 'System Admin'}</span>
+                          </div>
+                        ) : att.category === 'Core' || att.category === 'A' ? (
                           <div className="space-y-0.5">
                             <div>Pres: <span className={att.presApprovedBy ? 'text-emerald-400 font-bold' : 'text-slate-400'}>{att.presApprovedBy || 'Pending'}</span></div>
                           </div>
@@ -738,6 +743,7 @@ export default function AdminDashboard({ activeTab }) {
                       </td>
                       <td className="text-right space-x-1">
                         <button
+                          title="Modify attendance from any previous date"
                           onClick={() => {
                             setEditingAtt(att);
                             setAttEditForm({ status: att.status, timeLogged: att.timeLogged, remarks: att.remarks || '' });
@@ -1094,7 +1100,8 @@ export default function AdminDashboard({ activeTab }) {
       {editingAtt && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80">
           <div className="glass-panel max-w-md w-full max-h-[90vh] overflow-y-auto p-6 shadow-2xl border border-slate-700">
-            <h3 className="text-lg font-bold text-white mb-2">Override Attendance Record</h3>
+            <h3 className="text-lg font-bold text-white mb-2">Modify Attendance Record</h3>
+            <div className="mb-4 px-3 py-2 rounded-xl bg-amber-500/10 border border-amber-500/30 text-amber-300 text-xs font-extrabold">⚙ SYSTEM SE CHANGE HUA — This modification will be permanently marked as a System Admin change.</div>
             <p className="text-xs text-slate-400 mb-4">Member: {editingAtt.userName} | Date: {editingAtt.date}</p>
             <form onSubmit={handleModifyAttendance} className="space-y-3 text-xs">
               <div>
