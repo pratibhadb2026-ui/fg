@@ -34,7 +34,7 @@ export default function Sidebar({ activeTab, setActiveTab, role }) {
       case 'president':
         return [
           { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard, desc: 'Today, tasks, events & attendance' },
-          { id: 'cat_a_approval', label: 'Core Team President Approvals', icon: Award, desc: 'Approve Core Attendance' },
+          { id: 'core_attendance', label: 'Core Attendance', icon: Award, desc: 'Mark Core Attendance' },
           { id: 'attendance_profiles', label: 'Attendance Profiles', icon: CalendarCheck, desc: 'View member-wise attendance history' },
           { id: 'cat_b_attendance', label: 'Juniors Attendance', icon: CalendarCheck, desc: 'Monitor Junior Attendance' },
           { id: 'tasks_overview', label: 'Tasks Monitor', icon: ClipboardList, desc: 'View Work Progress' },
@@ -47,8 +47,7 @@ export default function Sidebar({ activeTab, setActiveTab, role }) {
           { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard, desc: 'Today, tasks, events & attendance' },
           { id: 'attendance_profiles', label: 'Junior Attendance Profiles', icon: CalendarCheck, desc: 'Click a Junior to see full history' },
           { id: 'cat_b_attendance', label: 'Mark Junior Attendance', icon: Clock, desc: 'Daily Session Attendance Window' },
-          { id: 'cat_a_self', label: 'Core Self-Attendance', icon: CheckCircle2, desc: 'Request President Confirmation' },
-          { id: 'task_assign', label: 'Assign & Track Tasks', icon: ClipboardList, desc: 'Assign Work to Juniors' },
+                    { id: 'task_assign', label: 'Assign & Track Tasks', icon: ClipboardList, desc: 'Assign Work to Juniors' },
           { id: 'equipment', label: 'Equipment Tracking', icon: Package, desc: 'See equipment currently issued' },
           { id: 'events', label: 'Events & Shoots', icon: CalendarDays, desc: 'See planned shoots' },
           { id: 'create', label: 'Create', icon: PlusCircle, desc: 'Create Task, Equipment or Event' }

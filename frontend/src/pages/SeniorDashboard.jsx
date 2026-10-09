@@ -22,6 +22,7 @@ export default function SeniorDashboard({ activeTab }) {
   const [allMembers, setAllMembers] = useState([]);
   const [catBAttendance, setCatBAttendance] = useState([]);
   const [catAAttendance, setCatAAttendance] = useState([]);
+  const coreMembers = allMembers.filter(u => u && u.role === 'cat_a');
   const [tasks, setTasks] = useState([]);
   const [loading, setLoading] = useState(true);
 
@@ -94,27 +95,13 @@ export default function SeniorDashboard({ activeTab }) {
     }
   };
 
-  const handleRequestSelfAtt = async (status) => {
+  const handleMarkCatA = async (userId, status) => {
     try {
-      await apiRequest('/attendance/request-cat-a', 'POST', { status });
+      const res = await apiRequest('/attendance/mark-cat-a', 'POST', { userId, status });
       fetchSeniorData();
-      showFeedbackMsg(`Core attendance submitted as ${status}. Awaiting President approval.`, 'success');
+      showFeedbackMsg(`Core attendance marked: ${status} at ${res.timeLogged || 'now'}`, 'success');
     } catch (err) {
-      showFeedbackMsg('Error requesting self attendance: ' + err.message, 'error');
-    }
-  };
-
-  const handleDualApprove = async (attendanceId, approvalType, action) => {
-    try {
-      await apiRequest('/attendance/approve-cat-a', 'POST', {
-        attendanceId,
-        approvalType,
-        action
-      });
-      fetchSeniorData();
-      showFeedbackMsg(`${approvalType.toUpperCase()} ${action}d attendance successfully!`, 'success');
-    } catch (err) {
-      showFeedbackMsg('Approval Error: ' + err.message, 'error');
+      showFeedbackMsg('Core attendance marking error: ' + err.message, 'error');
     }
   };
 
@@ -248,83 +235,50 @@ export default function SeniorDashboard({ activeTab }) {
         </div>
       )}
 
-      {/* TAB 2: CORE TEAM DUAL APPROVAL MATRIX */}
-      {(activeTab === 'cat_a_self' || activeTab === 'cat_a_approval') && (
+      {/* TAB 2: CORE TEAM ATTENDANCE — PRESIDENT MARKS DIRECTLY */}
+      {user.role === 'president' && (activeTab === 'core_attendance' || activeTab === 'cat_a_approval') && (
         <div className="glass-panel p-6 space-y-6">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-800 pb-4">
             <div>
               <h2 className="text-xl font-bold text-white flex items-center space-x-2">
                 <Award className="w-5 h-5 text-amber-400" />
-                <span>Core Attendance — President Approval</span>
+                <span>Core Team Attendance</span>
               </h2>
-              <p className="text-xs text-slate-400 mt-1">Core members mark their own Present/Absent status. President only approves the submitted status.</p>
+              <p className="text-xs text-slate-400 mt-1">President directly marks Present or Absent attendance for every Core member.</p>
             </div>
-
-            {user.role === 'cat_a' && (
-              <div className="flex gap-2">
-                <button onClick={()=>handleRequestSelfAtt('Present')} className="px-4 py-2.5 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-white font-bold text-xs shadow-lg">✓ Mark Present</button>
-                <button onClick={()=>handleRequestSelfAtt('Absent')} className="px-4 py-2.5 rounded-xl bg-red-500 hover:bg-red-400 text-white font-bold text-xs shadow-lg">✕ Mark Absent</button>
-              </div>
-            )}
           </div>
 
-          <div className="overflow-x-auto rounded-2xl border border-slate-800">
-            <table className="w-full text-left text-xs">
-              <thead>
-                <tr>
-                  <th>Date</th>
-                  <th>Core Member</th>
-                  <th>Time Logged</th>
-                  
-                  <th>President Approval</th>
-                  <th>Final Status</th>
-                  <th className="text-right">Approval Actions</th>
-                </tr>
-              </thead>
-              <tbody>
-                {catAAttendance.map((rec) => (
-                  <tr key={rec.id}>
-                    <td className="text-slate-300 font-medium">{rec.date}</td>
-                    <td className="font-bold text-white">{rec.userName}</td>
-                    <td className="text-cyan-300 font-mono">{rec.timeLogged}</td>
-
-                    {/* President Authority */}
-                    <td>
-                      {rec.presApprovedBy ? (
-                        <span className="text-emerald-400 font-bold flex items-center space-x-1 text-xs">
-                          <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" />
-                          <span>Approved ({rec.presApprovedBy})</span>
-                        </span>
-                      ) : (
-                        <span className="text-amber-400 font-medium text-xs">Pending • Submitted: {rec.requestedStatus || 'Present'}</span>
-                      )}
-                    </td>
-
-                    {/* Final Status */}
-                    <td>
-                      <span className={`px-2.5 py-0.5 rounded-full text-xs font-bold border ${
-                        rec.status === 'Approved' ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/30 pulse-emerald' :
-                        rec.status === 'Rejected' ? 'bg-red-500/20 text-red-300 border-red-500/30' :
-                        'bg-amber-500/20 text-amber-300 border-amber-500/30'
-                      }`}>
-                        {rec.status === 'Approved' ? '✅ Valid & Confirmed' : rec.status}
-                      </span>
-                    </td>
-
-                    {/* Action Buttons */}
-                    <td className="text-right space-x-1.5">
-                      {/* President Approve Button */}
-                      {user.role === 'president' && !rec.presApprovedBy && rec.status === 'Pending Approval' && (
-                        <div className="flex justify-end gap-1.5">
-                          <button onClick={()=>handleDualApprove(rec.id, 'president', 'approve')} className="px-3 py-1 rounded-lg bg-emerald-500 hover:bg-emerald-400 text-white font-bold text-xs">Approve {rec.requestedStatus || 'Present'}</button>
-                          <button onClick={()=>handleDualApprove(rec.id, 'president', 'reject')} className="px-3 py-1 rounded-lg bg-red-500 hover:bg-red-400 text-white font-bold text-xs">Reject</button>
-                        </div>
-                      )}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {coreMembers.map((member) => {
+              const attRecord = catAAttendance.find(a => a && (a.userId === member.id || a.userUsername === member.username));
+              const status = attRecord ? attRecord.status : 'Not Marked';
+              return (
+                <div key={member.id} className="glass-card p-4 rounded-2xl border border-slate-800 space-y-3 relative">
+                  <div className="flex items-start justify-between">
+                    <div>
+                      <div className="font-bold text-white text-sm">{member.name}</div>
+                      <div className="text-xs text-slate-400">{member.designation}</div>
+                      <div className="text-xs text-cyan-400 font-semibold mt-0.5">{member.team}</div>
+                    </div>
+                    <span className={`px-2 py-0.5 rounded-full text-xs font-bold border ${
+                      status === 'Present' ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/30' :
+                      status === 'Absent' ? 'bg-red-500/20 text-red-300 border-red-500/30' :
+                      'bg-slate-800 text-slate-400 border-slate-700'
+                    }`}>{status}</span>
+                  </div>
+                  {attRecord && status === 'Present' && (
+                    <div className="text-xs text-emerald-400 bg-emerald-500/10 p-2 rounded-xl border border-emerald-500/20 font-mono">
+                      Logged Present at: {attRecord.timeLogged}
+                    </div>
+                  )}
+                  <div className="flex items-center space-x-2 pt-2 border-t border-slate-800">
+                    <button onClick={() => handleMarkCatA(member.id, 'Present')} className={`flex-1 py-2 rounded-xl font-semibold text-xs transition-all ${status === 'Present' ? 'bg-emerald-500 text-white shadow-lg' : 'bg-slate-800 hover:bg-emerald-500/20 text-emerald-400 border border-emerald-500/20'}`}>Present</button>
+                    <button onClick={() => handleMarkCatA(member.id, 'Absent')} className={`flex-1 py-2 rounded-xl font-semibold text-xs transition-all ${status === 'Absent' ? 'bg-red-500 text-white shadow-lg' : 'bg-slate-800 hover:bg-red-500/20 text-red-400 border border-red-500/20'}`}>Absent</button>
+                  </div>
+                  {attRecord?.presMarkedBy && <div className="text-[11px] text-amber-300">Marked by President: {attRecord.presMarkedBy}</div>}
+                </div>
+              );
+            })}
           </div>
         </div>
       )}

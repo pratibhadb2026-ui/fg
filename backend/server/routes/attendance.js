@@ -196,70 +196,58 @@ router.post('/mark-cat-b', authenticateToken, authorizeRoles('admin', 'cat_a', '
   res.status(201).json(newRecord);
 });
 
-// Core Member Self Attendance Request / Submission
-// Core marks their own Present/Absent status. President only approves the submitted status.
-router.post('/request-cat-a', authenticateToken, authorizeRoles('cat_a'), (req, res) => {
-  const targetDate = req.body.date || getIndiaDateString();
-  const requestedStatus = req.body.status;
-  if (!['Present', 'Absent'].includes(requestedStatus)) {
-    return res.status(400).json({ error: 'Core attendance status must be Present or Absent.' });
+
+// President directly marks Core attendance. Core self-attendance is not used.
+router.post('/mark-cat-a', authenticateToken, authorizeRoles('president'), (req, res) => {
+  const { userId, status, date, remarks } = req.body;
+  if (!userId || !['Present', 'Absent'].includes(status)) {
+    return res.status(400).json({ error: 'User ID and valid status are required' });
   }
+  const targetDate = date || getIndiaDateString();
   const workingDay = getWorkingDay(targetDate);
   if (!workingDay.isWorkingDay) {
     return res.status(400).json({ error: `Attendance cannot be marked because ${targetDate} is a non-working day (${workingDay.reason}).` });
   }
-  const user = db.findOne('users', u => u.id === req.user.id || u.username === req.user.username);
-  const existing = db.findOne('attendance', r => (r.userId === user.id || r.userUsername === user.username) && r.date === targetDate);
+  const targetUser = db.findOne('users', u => (u.id === userId || u.username === userId) && u.role === 'cat_a');
+  if (!targetUser) return res.status(404).json({ error: 'Target Core user not found' });
+
+  const timeLogged = status === 'Present' ? getCurrentTimeString() : 'N/A';
+  const existing = db.findOne('attendance', r => (r.userId === targetUser.id || r.userUsername === targetUser.username) && r.date === targetDate);
+  const payload = {
+    status,
+    markedBy: req.user.id,
+    markedByName: req.user.name,
+    timeLogged,
+    remarks: remarks || 'Core attendance marked by President',
+    workingDay: true,
+    autoMarked: false,
+    presMarked: true,
+    presMarkedBy: req.user.name,
+    presMarkedAt: new Date().toISOString(),
+    adminModified: false,
+    changeSource: 'President'
+  };
+
   if (existing) {
-    return res.status(400).json({ error: 'Core attendance for this date has already been submitted.' });
+    db.update('attendance', r => r.id === existing.id, payload);
+    logAudit(req, 'CORE_ATTENDANCE_UPDATED', req.user.username, req.user.role,
+      `President updated Core attendance for ${targetUser.name}: ${status} at ${timeLogged}`);
+    return res.json({ message: 'Core attendance updated successfully', status, timeLogged });
   }
 
   const newRecord = db.insert('attendance', {
     date: targetDate,
-    userId: user.id,
-    userName: user.name,
-    userUsername: user.username,
+    userId: targetUser.id,
+    userName: targetUser.name,
+    userUsername: targetUser.username,
     role: 'cat_a',
     category: 'Core',
-    team: user.team,
-    status: 'Pending Approval',
-    requestedStatus,
-    timeLogged: requestedStatus === 'Present' ? getCurrentTimeString() : 'N/A',
-    presApprovedBy: null,
-    presApprovedTime: null,
-    remarks: 'Core self-attendance submitted for President approval',
-    workingDay: true,
-    autoMarked: false
+    team: targetUser.team,
+    ...payload
   });
-
-  logAudit(req, 'CORE_ATTENDANCE_SUBMITTED', req.user.username, req.user.role,
-    `${user.name} submitted Core attendance as ${requestedStatus} for President approval.`);
+  logAudit(req, 'CORE_ATTENDANCE_MARKED', req.user.username, req.user.role,
+    `President marked Core attendance for ${targetUser.name}: ${status} at ${timeLogged}`);
   res.status(201).json(newRecord);
-});
-
-// President approves/rejects the status submitted by a Core member.
-router.post('/approve-cat-a', authenticateToken, authorizeRoles('president'), (req, res) => {
-  const { attendanceId, action } = req.body;
-  if (!attendanceId || !['approve', 'reject'].includes(action)) {
-    return res.status(400).json({ error: 'Attendance ID and valid approval action are required' });
-  }
-  const record = db.findOne('attendance', r => r.id === attendanceId);
-  if (!record || record.role !== 'cat_a') return res.status(404).json({ error: 'Core attendance record not found' });
-
-  const timeStr = getCurrentTimeString();
-  const approvedStatus = record.requestedStatus || (record.status === 'Approved' ? 'Present' : 'Present');
-  const finalStatus = action === 'approve' ? approvedStatus : 'Rejected';
-  const updates = {
-    status: finalStatus,
-    presApprovedBy: action === 'approve' ? req.user.name : null,
-    presApprovedTime: action === 'approve' ? timeStr : null,
-    approvalAction: action,
-    approvedStatus: action === 'approve' ? approvedStatus : null
-  };
-  db.update('attendance', r => r.id === attendanceId, updates);
-  logAudit(req, 'CORE_ATTENDANCE_APPROVAL', req.user.username, req.user.role,
-    `${action === 'approve' ? 'Approved' : 'Rejected'} Core attendance for ${record.userName}: ${approvedStatus}.`);
-  res.json({ message: `Core attendance ${action}d successfully`, status: finalStatus });
 });
 
 // Admin Override / Modify Attendance Record
