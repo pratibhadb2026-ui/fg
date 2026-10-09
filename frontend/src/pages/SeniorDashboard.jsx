@@ -66,7 +66,7 @@ export default function SeniorDashboard({ activeTab }) {
       setAllMembers(safeUsers);
       setJuniors(jrList);
 
-      const todayStr = new Date().toISOString().split('T')[0];
+      const todayStr = new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Kolkata' }).format(new Date());
       const attData = await apiRequest(`/attendance?date=${todayStr}`);
       const safeAtt = Array.isArray(attData) ? attData : [];
 
@@ -98,7 +98,13 @@ export default function SeniorDashboard({ activeTab }) {
   const handleMarkCatA = async (userId, status) => {
     try {
       const res = await apiRequest('/attendance/mark-cat-a', 'POST', { userId, status });
-      fetchSeniorData();
+      const member = coreMembers.find(m => m.id === userId || m.username === userId);
+      const updated = { ...(catAAttendance.find(a => a && (a.userId === userId || a.userUsername === member?.username)) || {}), userId: member?.id || userId, userUsername: member?.username, userName: member?.name, status, timeLogged: res.timeLogged || (status === 'Present' ? 'Now' : 'N/A'), presMarkedBy: user?.name };
+      setCatAAttendance(prev => {
+        const exists = prev.some(a => a && (a.userId === userId || a.userUsername === member?.username));
+        return exists ? prev.map(a => (a && (a.userId === userId || a.userUsername === member?.username)) ? { ...a, ...updated } : a) : [...prev, updated];
+      });
+      await fetchSeniorData();
       showFeedbackMsg(`Core attendance marked: ${status} at ${res.timeLogged || 'now'}`, 'success');
     } catch (err) {
       showFeedbackMsg('Core attendance marking error: ' + err.message, 'error');

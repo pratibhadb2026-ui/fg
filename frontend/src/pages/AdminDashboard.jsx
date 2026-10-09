@@ -368,7 +368,7 @@ export default function AdminDashboard({ activeTab }) {
     return matchesSearch && matchesRole;
   });
 
-  if (activeTab === 'attendance_profiles') return <AttendanceProfiles users={users} viewerRole={user?.role} />;
+  if (activeTab === 'attendance_profiles') return <AttendanceProfiles users={users} viewerRole={user?.role} canEdit={true} />;
 
   if (activeTab === 'attendance_calendar') return (
     <div className="space-y-6">

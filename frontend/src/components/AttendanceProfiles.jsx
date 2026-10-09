@@ -1,8 +1,8 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { CalendarCheck, ChevronLeft, UserCircle, CheckCircle2, XCircle, Clock3 } from 'lucide-react';
+import { CalendarCheck, ChevronLeft, UserCircle, Pencil, X } from 'lucide-react';
 import { apiRequest } from '../utils/api.js';
 
-export default function AttendanceProfiles({ users = [], viewerRole }) {
+export default function AttendanceProfiles({ users = [], viewerRole, canEdit = false }) {
   const visibleUsers = useMemo(() => {
     const list = Array.isArray(users) ? users.filter(u => u && !['admin','alumni'].includes(u.role)) : [];
     if (viewerRole === 'cat_a') return list.filter(u => u.role === 'cat_b');
@@ -13,6 +13,9 @@ export default function AttendanceProfiles({ users = [], viewerRole }) {
   const [records, setRecords] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [editingRecord, setEditingRecord] = useState(null);
+  const [editForm, setEditForm] = useState({ status: 'Present', timeLogged: '', remarks: '' });
+  const [savingEdit, setSavingEdit] = useState(false);
 
   useEffect(() => {
     if (!selected) return;
@@ -34,6 +37,25 @@ export default function AttendanceProfiles({ users = [], viewerRole }) {
   const counted = present + absent;
   const percentage = counted ? Math.round((present / counted) * 100) : 0;
 
+  const openEdit = (record) => {
+    setEditingRecord(record);
+    setEditForm({ status: record.status || 'Present', timeLogged: record.timeLogged || '', remarks: record.remarks || '' });
+  };
+
+  const saveEdit = async (e) => {
+    e.preventDefault();
+    if (!editingRecord) return;
+    setSavingEdit(true);
+    try {
+      await apiRequest(`/attendance/modify/${editingRecord.id}`, 'PUT', editForm);
+      const data = await apiRequest(`/attendance?userId=${encodeURIComponent(selected.id)}`);
+      setRecords(Array.isArray(data) ? [...data].sort((a,b) => String(b.date).localeCompare(String(a.date))) : []);
+      setEditingRecord(null);
+    } catch (err) {
+      setError(err.message || 'Unable to modify attendance.');
+    } finally { setSavingEdit(false); }
+  };
+
   if (selected) return (
     <div className="space-y-5">
       <button onClick={() => setSelected(null)} className="px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 text-sm font-semibold flex items-center gap-2">
@@ -54,18 +76,42 @@ export default function AttendanceProfiles({ users = [], viewerRole }) {
         {loading && <p className="py-8 text-center text-slate-400">Loading attendance history...</p>}
         {error && <div className="mt-5 p-3 rounded-xl bg-red-500/10 border border-red-500/30 text-red-300 text-sm">{error}</div>}
         {!loading && !error && <div className="mt-5 overflow-x-auto rounded-2xl border border-slate-800">
-          <table className="w-full text-left text-xs"><thead><tr><th>Date</th><th>Status</th><th>Time</th><th>Remarks</th><th>Marked / Approved</th></tr></thead><tbody>
+          <table className="w-full text-left text-xs"><thead><tr><th>Date</th><th>Status</th><th>Time</th><th>Remarks</th><th>Marked / Approved</th>{canEdit && <th className="text-right">Admin Edit</th>}</tr></thead><tbody>
             {records.map(r => <tr key={r.id}>
               <td className="font-semibold text-white">{r.date}</td>
               <td><span className={`px-2 py-1 rounded-full border ${r.status === 'Present' || r.status === 'Approved' ? 'bg-emerald-500/10 text-emerald-300 border-emerald-500/30' : r.status === 'Absent' || r.status === 'Rejected' ? 'bg-red-500/10 text-red-300 border-red-500/30' : 'bg-amber-500/10 text-amber-300 border-amber-500/30'}`}>{r.status}</span></td>
               <td className="text-cyan-300 font-mono">{r.timeLogged || '—'}</td>
               <td className="text-slate-400">{r.remarks || '—'}</td>
-              <td className="text-slate-300">{r.presApprovedBy ? `President: ${r.presApprovedBy}` : (r.markedByName || '—')}</td>
+              <td className="text-slate-300">{r.adminModified ? <span className="text-amber-300 font-bold">⚙ SYSTEM SE CHANGE HUA — Admin: {r.adminModifiedBy || 'System Admin'}</span> : (r.presMarkedBy ? `President: ${r.presMarkedBy}` : (r.markedByName || '—'))}</td>
+              {canEdit && <td className="text-right"><button onClick={() => openEdit(r)} className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg bg-cyan-500/15 text-cyan-300 border border-cyan-500/30 hover:bg-cyan-500/25 font-semibold"><Pencil className="w-3 h-3" /> Edit</button></td>}
             </tr>)}
-            {records.length === 0 && <tr><td colSpan="5" className="text-center text-slate-500 py-10">No attendance records found.</td></tr>}
+            {records.length === 0 && <tr><td colSpan={canEdit ? 6 : 5} className="text-center text-slate-500 py-10">No attendance records found.</td></tr>}
           </tbody></table>
         </div>}
       </div>
+      {editingRecord && canEdit && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80">
+          <div className="glass-panel max-w-md w-full p-6 shadow-2xl border border-slate-700">
+            <div className="flex items-center justify-between mb-3">
+              <h3 className="text-lg font-bold text-white">Edit Attendance</h3>
+              <button type="button" onClick={() => setEditingRecord(null)} className="p-2 rounded-lg bg-slate-800 text-slate-300"><X className="w-4 h-4" /></button>
+            </div>
+            <div className="mb-4 px-3 py-2 rounded-xl bg-amber-500/10 border border-amber-500/30 text-amber-300 text-xs font-extrabold">⚙ SYSTEM SE CHANGE HUA — This attendance edit will be permanently marked as a System Admin change.</div>
+            <p className="text-xs text-slate-400 mb-4">{selected.name} • {editingRecord.date}</p>
+            <form onSubmit={saveEdit} className="space-y-3">
+              <select value={editForm.status} onChange={e => setEditForm({...editForm, status:e.target.value})} className="w-full p-2.5 glass-input text-white">
+                <option value="Present">Present</option><option value="Absent">Absent</option><option value="Approved">Approved</option><option value="Rejected">Rejected</option>
+              </select>
+              <input value={editForm.timeLogged} onChange={e => setEditForm({...editForm, timeLogged:e.target.value})} className="w-full p-2.5 glass-input text-white" placeholder="Time logged" />
+              <input value={editForm.remarks} onChange={e => setEditForm({...editForm, remarks:e.target.value})} className="w-full p-2.5 glass-input text-white" placeholder="Reason / remarks" />
+              <div className="flex justify-end gap-2 pt-2">
+                <button type="button" onClick={() => setEditingRecord(null)} className="px-4 py-2 rounded-xl bg-slate-800 text-slate-200">Cancel</button>
+                <button disabled={savingEdit} className="px-4 py-2 rounded-xl bg-cyan-500 text-white font-bold disabled:opacity-50">{savingEdit ? 'Saving...' : 'Save Change'}</button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 
